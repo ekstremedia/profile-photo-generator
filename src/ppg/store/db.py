@@ -167,6 +167,27 @@ class Database:
             self._conn.commit()
         return cursor.rowcount > 0
 
+    def all_avatar_ids(self) -> list[str]:
+        with self._lock:
+            rows = self._conn.execute("SELECT id FROM avatars").fetchall()
+        return [row["id"] for row in rows]
+
+    def delete_all_avatars(self) -> int:
+        """Empty the index.
+
+        ``attr_combos`` goes too: it exists so batch generation avoids
+        repeating a combination, and keeping it after a clear would make the
+        next batch skip perfectly good combinations to avoid duplicating
+        avatars that no longer exist. The prompt cache is deliberately kept -
+        it holds no images, and preserving it means a regenerated `by-seed`
+        avatar comes back byte-identical.
+        """
+        with self._lock:
+            cursor = self._conn.execute("DELETE FROM avatars")
+            self._conn.execute("DELETE FROM attr_combos")
+            self._conn.commit()
+        return cursor.rowcount
+
     # -- prompt cache ---------------------------------------------------
     def get_prompt(self, key: str) -> dict[str, Any] | None:
         with self._lock:

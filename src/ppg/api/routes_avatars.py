@@ -197,15 +197,32 @@ async def get_avatar_image(
     return _serve(state, avatar_id, record["sizes"], size, format)
 
 
+@router.delete("/avatars", summary="Delete every avatar")
+async def clear_avatars(
+    confirm: bool = Query(
+        default=False,
+        description="Must be true. Guards against a bare DELETE wiping the library.",
+    ),
+    state: AppState = Depends(get_state),
+) -> dict[str, int]:
+    """Delete all avatars and their image files.
+
+    Irreversible, so it will not act without `?confirm=true`. Cached prompts
+    are kept, which means regenerating a `by-seed` avatar afterwards returns
+    the identical face rather than a new one.
+    """
+    if not confirm:
+        raise HTTPException(
+            status_code=400,
+            detail="Refusing to delete everything without ?confirm=true.",
+        )
+    return {"deleted": state.service.clear_all()}
+
+
 @router.delete("/avatars/{avatar_id}", status_code=204, summary="Delete an avatar")
 async def delete_avatar(avatar_id: str, state: AppState = Depends(get_state)) -> Response:
-    import shutil
-
-    from ppg.store.files import avatar_dir
-
-    if not state.db.delete_avatar(avatar_id):
+    if not state.service.delete(avatar_id):
         raise HTTPException(status_code=404, detail=f"No avatar with id {avatar_id}.")
-    shutil.rmtree(avatar_dir(state.settings.outputs_dir, avatar_id), ignore_errors=True)
     return Response(status_code=204)
 
 

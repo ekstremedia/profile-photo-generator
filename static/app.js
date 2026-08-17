@@ -13,12 +13,14 @@ const state = {
   primary: ['sex', 'ethnicity', 'skin_tone', 'profession'],
   secondary: ['hair', 'facial_hair', 'glasses', 'expression', 'clothing', 'background', 'lighting'],
   lastAttributes: null,
+  count: 0,
 };
 
 /* ---------------------------------------------------------------- helpers */
 
 async function api(path, init) {
   const response = await fetch(path, init);
+  if (response.status === 204) return null;
   if (!response.ok) {
     let detail = `${response.status} ${response.statusText}`;
     try {
@@ -127,9 +129,58 @@ function card(avatar) {
     ? `${avatar.persona.name}, ${avatar.persona.age}`
     : `${avatar.attributes.age} · ${avatar.attributes.sex}`;
 
-  element.append(img, caption);
+  const del = document.createElement('button');
+  del.className = 'del';
+  del.type = 'button';
+  del.textContent = '×';
+  del.title = 'Delete this avatar';
+  del.setAttribute('aria-label', 'Delete this avatar');
+  del.addEventListener('click', (event) => {
+    // Without this the click also opens the detail dialog behind the removal.
+    event.stopPropagation();
+    deleteAvatar(avatar.id, element);
+  });
+
+  element.append(img, caption, del);
   element.addEventListener('click', () => openDetail(avatar));
   return element;
+}
+
+async function deleteAvatar(id, element) {
+  try {
+    await api(`/v1/avatars/${id}`, { method: 'DELETE' });
+    element?.remove();
+    updateCount(-1);
+    say('Deleted.');
+  } catch (error) {
+    say(`Could not delete: ${error.message}`, true);
+  }
+}
+
+/* Two-step confirmation in the button itself rather than window.confirm():
+   a native dialog blocks the page, and this keeps the warning next to the
+   thing it is warning about. Disarms itself after five seconds. */
+function armable(button, label, armedLabel, action) {
+  let armed = false;
+  let timer = null;
+  const disarm = () => {
+    armed = false;
+    button.textContent = label;
+    button.classList.remove('armed');
+    clearTimeout(timer);
+  };
+  button.addEventListener('click', async () => {
+    if (!armed) {
+      armed = true;
+      button.textContent = armedLabel();
+      button.classList.add('armed');
+      timer = setTimeout(disarm, 5000);
+      return;
+    }
+    disarm();
+    await action();
+  });
+  return disarm;
 }
 
 function pendingCard(label = 'generating…') {
@@ -144,7 +195,20 @@ async function refreshGallery() {
   const gallery = $('gallery');
   gallery.replaceChildren(...avatars.map(card));
   $('empty').hidden = avatars.length > 0;
+  state.count = avatars.length;
+  renderCount();
   return avatars;
+}
+
+function renderCount() {
+  $('count').textContent = state.count ? `· ${state.count}` : '';
+  $('clear').disabled = !state.count;
+}
+
+function updateCount(delta) {
+  state.count = Math.max(0, (state.count || 0) + delta);
+  renderCount();
+  $('empty').hidden = state.count > 0;
 }
 
 /* ----------------------------------------------------------------- detail */
@@ -186,6 +250,16 @@ function openDetail(avatar) {
     say('Traits loaded. Generate for a new face with the same traits.');
   };
 
+  // Replaced wholesale each time the dialog opens, so the handler always
+  // refers to the avatar currently on screen.
+  const del = $('delete-one');
+  const fresh = del.cloneNode(true);
+  del.replaceWith(fresh);
+  armable(fresh, 'Delete', () => 'Really delete?', async () => {
+    $('detail').close();
+    await deleteAvatar(avatar.id, document.querySelector(`.card[data-id="${avatar.id}"]`));
+  });
+
   $('detail').showModal();
 }
 
@@ -207,6 +281,7 @@ async function generate() {
       body: JSON.stringify(readForm()),
     });
     placeholder.replaceWith(card(result));
+    updateCount(1);
     const seconds = result.duration_ms ? ` in ${(result.duration_ms / 1000).toFixed(1)}s` : '';
     say(result.cached ? 'Already generated - served from cache.' : `Done${seconds}.`);
   } catch (error) {
@@ -301,6 +376,21 @@ async function init() {
   });
   $('batch').addEventListener('click', generateBatch);
   $('refresh').addEventListener('click', () => refreshGallery().then(() => say('')));
+
+  armable(
+    $('clear'),
+    'Clear all',
+    () => `Delete all ${state.count}?`,
+    async () => {
+      try {
+        const result = await api('/v1/avatars?confirm=true', { method: 'DELETE' });
+        await refreshGallery();
+        say(`Deleted ${result.deleted}.`);
+      } catch (error) {
+        say(`Could not clear: ${error.message}`, true);
+      }
+    },
+  );
   $('detail-close').addEventListener('click', () => $('detail').close());
 
   try {

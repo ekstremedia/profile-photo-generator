@@ -496,6 +496,41 @@ def options(axis: str | None = typer.Argument(None, help="Show one axis only."))
 
 
 @app.command()
+def clear(
+    yes: bool = typer.Option(False, "--yes", "-y", help="Skip the confirmation prompt."),
+) -> None:
+    """Delete every generated avatar and its image files.
+
+    Model weights are untouched - this only clears `data/outputs` and the
+    index. Cached prompts are kept, so regenerating a `by-seed` avatar
+    afterwards returns the identical face.
+    """
+    settings = _settings()
+    from ppg.store.db import Database
+
+    db = Database(settings.db_path)
+    try:
+        total = db.count_avatars()
+        if not total:
+            console.print("Nothing to delete.")
+            return
+        if not yes and not typer.confirm(f"Delete all {total} avatars and their image files?"):
+            console.print("Cancelled.")
+            raise typer.Exit(code=1)
+
+        from ppg.backends.fake import FakeBackend
+        from ppg.prompt.composer import TemplateComposer
+        from ppg.service import AvatarService
+
+        # Deleting needs the store, not a model, so the cheapest backend will
+        # do - loading 7GB of weights to remove files would be absurd.
+        service = AvatarService(settings, db, FakeBackend(settings), TemplateComposer())
+        console.print(f"[green]Deleted {service.clear_all()} avatars.[/green]")
+    finally:
+        db.close()
+
+
+@app.command()
 def serve(
     host: str | None = typer.Option(None),
     port: int | None = typer.Option(None),

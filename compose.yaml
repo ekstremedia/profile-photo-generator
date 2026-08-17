@@ -45,7 +45,13 @@ x-ppg-service: &ppg-service
     context: .
     dockerfile: docker/Dockerfile
   image: ppg:local
-  env_file: .env
+  env_file:
+    # Optional: every value in .env has a working default, so a fresh clone
+    # comes up with `docker compose up` alone. Without `required: false`,
+    # compose refuses to even build when the file is absent, which is a poor
+    # first five minutes for anyone who skipped `cp .env.example .env`.
+    - path: .env
+      required: false
   environment: *ppg-env
   volumes:
     # A bind mount, not a named volume. The weights (~7GB), the SQLite index

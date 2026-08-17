@@ -322,6 +322,31 @@ def test_deleting_an_avatar_removes_the_row_and_the_files(client: TestClient, se
     assert client.delete(f"/v1/avatars/{avatar_id}").status_code == 404
 
 
+def test_clear_all_requires_explicit_confirmation(client: TestClient, settings) -> None:
+    ids = [_generate(client, seed=seed)["id"] for seed in (401, 402, 403)]
+
+    # A bare DELETE on the collection must not wipe the library. This guard is
+    # the only thing between a mistyped curl and every avatar on the machine.
+    assert client.delete("/v1/avatars").status_code == 400
+    assert len(client.get("/v1/avatars").json()) == 3
+
+    response = client.delete("/v1/avatars", params={"confirm": True})
+    assert response.status_code == 200
+    assert response.json() == {"deleted": 3}
+
+    assert client.get("/v1/avatars").json() == []
+    for avatar_id in ids:
+        assert not avatar_dir(settings.outputs_dir, avatar_id).exists()
+
+
+def test_clear_all_keeps_prompts_so_by_seed_faces_are_stable(client: TestClient) -> None:
+    # Prompts are cached separately from images on purpose: clearing the
+    # gallery must not silently give every user a new face next time.
+    before = client.get("/v1/avatars/by-seed/ada@example.com").content
+    client.delete("/v1/avatars", params={"confirm": True})
+    assert client.get("/v1/avatars/by-seed/ada@example.com").content == before
+
+
 # ---------------------------------------------------------------------------
 # Authentication
 # ---------------------------------------------------------------------------

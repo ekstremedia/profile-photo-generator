@@ -49,13 +49,18 @@ Initial release.
   and WebP, provenance metadata in PNG text chunks and EXIF, and a SQLite index
   in WAL mode.
 - **CLI** (`ppg`): `doctor`, `warmup`, `generate`, `batch` (with contact sheet),
-  `options`, `serve`, `version`. `generate` also works against a remote server
-  through `--url` / `PPG_URL`.
+  `options`, `clear`, `serve`, `version`. `generate` also works against a remote
+  server through `--url` / `PPG_URL`.
+- **Deletion**: `DELETE /v1/avatars/{id}` for one, and `DELETE /v1/avatars`
+  with `?confirm=true` for all. Cached prompts survive a clear, so a
+  regenerated `by-seed` avatar comes back as the same face.
 - **Safety rules**: free-text filtering for sexual content, age descriptors and
   real-person phrasings; age clamped to `PPG_MIN_AGE`–`PPG_MAX_AGE`; an opt-in
   minor mode that forces plain framing and drops styling overrides. Refusals
   surface as HTTP 422 before a request is queued.
-- **Gallery UI** served from `static/`, driven by `/v1/options`.
+- **Gallery UI** served from `static/`, driven by `/v1/options`. Generate one or
+  a batch, inspect a face's persona, attributes and prompt, delete a single
+  avatar from its card, or clear the whole gallery behind a two-step button.
 - **Docker setup**: `docker/Dockerfile`, `docker/entrypoint.sh`, `compose.yaml`
   and `scripts/setup-host.sh`. `./data` is bind-mounted to `/data` so weights,
   images and the database stay on the host, `host.docker.internal` is wired for
@@ -74,8 +79,10 @@ Initial release.
 - Jobs are in-memory and do not survive a restart. The avatars they produce do.
 - The safety filter is a narrow text filter, not a classifier. See
   [SECURITY.md](SECURITY.md).
-- Prompts exceed CLIP's 77-token limit and are truncated at the tail; this is
-  expected and the prompt order accounts for it.
+- Prompts are split across SDXL's two text encoders (subject, then photographic
+  style) so each half gets its own 77-token CLIP budget. A very long
+  `prompt_extra` can still push the subject half over, in which case its tail is
+  dropped; the realism cues in the second half are unaffected.
 
 [Unreleased]: https://github.com/ekstremedia/profile-photo-generator/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ekstremedia/profile-photo-generator/releases/tag/v0.1.0

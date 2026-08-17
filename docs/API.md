@@ -17,6 +17,7 @@ mounted at `/`.
 | GET | `/v1/avatars/{id}` | yes | metadata for one avatar |
 | GET | `/v1/avatars/{id}/image` | yes | the image file |
 | DELETE | `/v1/avatars/{id}` | yes | delete row and files |
+| DELETE | `/v1/avatars` | yes | delete every avatar, requires `?confirm=true` |
 | GET | `/v1/jobs/{id}` | yes | job status |
 | GET | `/v1/jobs/{id}/results` | yes | results of a finished job |
 | POST | `/v1/images/generations` | yes | OpenAI-compatible shim |
@@ -237,6 +238,29 @@ cache header.
 `204` on success, `404` if the id is unknown. Removes the database row and the
 whole directory of variants. The avatar will be regenerated identically if the
 same request arrives again.
+
+## DELETE /v1/avatars
+
+Deletes every avatar and every image file.
+
+```bash
+curl -s -X DELETE 'http://localhost:8000/v1/avatars?confirm=true'
+```
+
+```json
+{ "deleted": 51 }
+```
+
+Without `?confirm=true` this returns `400` and does nothing, so a mistyped
+`curl -X DELETE .../v1/avatars` cannot empty the library by accident.
+
+Model weights are untouched. Cached *prompts* are also kept on purpose: after a
+clear, `GET /v1/avatars/by-seed/{key}` regenerates the identical face rather
+than a new one, so clearing the gallery does not silently re-face every user in
+an application that relies on it.
+
+The CLI equivalent is `ppg clear` (`--yes` to skip the prompt), and the gallery
+UI exposes it as a two-step "Clear all" button.
 
 ## GET /v1/options
 

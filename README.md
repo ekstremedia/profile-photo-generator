@@ -84,6 +84,22 @@ ppg serve
 `ppg doctor` is the first thing to run when anything looks wrong; it checks
 every external dependency and names the unhappy one.
 
+### The CLI
+
+```bash
+ppg doctor                                  # check GPU, disk, weights, Ollama
+ppg warmup                                  # load the model, time one image
+ppg generate --sex female --age 34 --profession "marine biologist"
+ppg generate --seed someone@example.com     # deterministic
+ppg batch -n 50 --diversity even            # + a contact-sheet montage
+ppg options profession                      # what this instance accepts
+ppg clear                                   # delete every generated avatar
+ppg serve                                   # run the HTTP server
+```
+
+Commands run in-process by default. Pass `--url http://host:8000` (or set
+`PPG_URL`) to drive a running server instead, container or remote.
+
 ### Try it without downloading a model
 
 ```bash

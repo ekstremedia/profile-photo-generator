@@ -163,6 +163,26 @@ button.ghost { background: transparent; }
 /* --- gallery ------------------------------------------------------------ */
 .results-head { display: flex; align-items: center; justify-content: space-between; }
 .results h2 { font-size: 1rem; margin: 0 0 .75rem; }
+.head-actions { display: flex; gap: .4rem; margin-bottom: .75rem; }
+.dim-count { color: var(--dim); font-weight: 400; font-size: .85rem; }
+
+button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 35%, var(--line)); }
+button.danger.armed { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+/* Per-card delete. Hidden until hover so the grid stays calm, but always
+   focusable so it is reachable from the keyboard. */
+.card .del {
+  position: absolute;
+  top: .35rem; right: .35rem;
+  width: 22px; height: 22px;
+  padding: 0; line-height: 1;
+  border: 0; border-radius: 50%;
+  background: rgba(0, 0, 0, .55);
+  color: #fff; font-size: .95rem;
+  opacity: 0; transition: opacity .15s, background .15s;
+}
+.card:hover .del, .card .del:focus-visible { opacity: 1; }
+.card .del:hover { background: var(--bad); }
 
 .grid {
   display: grid;

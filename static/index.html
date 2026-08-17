@@ -76,8 +76,11 @@
 
     <section class="results">
       <div class="results-head">
-        <h2>Gallery</h2>
-        <button type="button" id="refresh" class="ghost">Refresh</button>
+        <h2>Gallery <span id="count" class="dim-count"></span></h2>
+        <div class="head-actions">
+          <button type="button" id="refresh" class="ghost">Refresh</button>
+          <button type="button" id="clear" class="ghost danger">Clear all</button>
+        </div>
       </div>
       <div class="grid" id="gallery"></div>
       <p class="empty" id="empty">Nothing generated yet. Hit <strong>Generate</strong>.</p>
@@ -97,6 +100,7 @@
         <div class="detail-actions">
           <button type="button" id="copy-url">Copy image URL</button>
           <button type="button" id="reroll">Re-roll these traits</button>
+          <button type="button" id="delete-one" class="danger">Delete</button>
         </div>
       </div>
     </div>

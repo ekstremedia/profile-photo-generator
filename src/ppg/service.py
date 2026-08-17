@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 import time
 from datetime import UTC, datetime
 from typing import Any
@@ -305,6 +306,28 @@ class AvatarService:
 
     def recent(self, limit: int = 60, offset: int = 0) -> list[AvatarResult]:
         return [self._to_result(r, cached=True) for r in self.db.list_avatars(limit, offset)]
+
+    def delete(self, avatar_id: str) -> bool:
+        """Remove one avatar and its files."""
+        if not self.db.delete_avatar(avatar_id):
+            return False
+        shutil.rmtree(avatar_dir(self.settings.outputs_dir, avatar_id), ignore_errors=True)
+        return True
+
+    def clear_all(self) -> int:
+        """Remove every avatar and its files. Returns how many rows went.
+
+        Files are removed per avatar rather than by wiping ``outputs_dir``
+        wholesale: the directory is user-configurable, and an unconditional
+        rmtree of a path someone pointed at the wrong place is not a mistake
+        worth making recoverable-by-backup only.
+        """
+        ids = self.db.all_avatar_ids()
+        removed = self.db.delete_all_avatars()
+        for avatar_id in ids:
+            shutil.rmtree(avatar_dir(self.settings.outputs_dir, avatar_id), ignore_errors=True)
+        logger.info("Cleared %d avatars", removed)
+        return removed
 
 
 def _combo_key(attrs: Attributes) -> str:
