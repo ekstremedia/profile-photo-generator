@@ -180,13 +180,13 @@ class DiffusersSDXLBackend:
         try:
             with torch.inference_mode():
                 output = self._pipe(
+                    # `prompt_2` is deliberately left unset: diffusers then
+                    # feeds this same text to both encoders, which is what
+                    # SDXL adheres to best. Splitting subject and style across
+                    # the two encoders looks like free capacity and measurably
+                    # loses requested details.
                     prompt=spec.prompt,
-                    # The second text encoder gets its own 77 tokens. Without
-                    # this the realism cues fall off the end of encoder 1 and
-                    # the output drifts back towards retouched stock photos.
-                    prompt_2=spec.prompt_2 or None,
                     negative_prompt=spec.negative_prompt,
-                    negative_prompt_2=spec.negative_prompt_2 or None,
                     width=spec.width,
                     height=spec.height,
                     num_inference_steps=spec.steps,

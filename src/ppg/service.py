@@ -102,10 +102,8 @@ class AvatarService:
         key = self._prompt_cache_key(attrs, seed, extra, negative_extra, plain)
         if cached := self.db.get_prompt(key):
             return ComposeResult(
-                subject=cached["subject"],
-                style=cached["style"],
-                negative_subject=cached["negative_subject"],
-                negative_style=cached["negative_style"],
+                prompt=cached["prompt"],
+                negative_prompt=cached["negative_prompt"],
                 persona=Persona(**cached["persona"]) if cached["persona"] else None,
                 source=cached["source"],
             )
@@ -119,10 +117,8 @@ class AvatarService:
         )
         self.db.put_prompt(
             key,
-            result.subject,
-            result.style,
-            result.negative_subject,
-            result.negative_style,
+            result.prompt,
+            result.negative_prompt,
             result.persona.model_dump() if result.persona else None,
             result.source,
         )
@@ -178,10 +174,8 @@ class AvatarService:
         started = time.perf_counter()
         image = await self.backend.generate(
             RenderSpec(
-                prompt=composed.subject,
-                prompt_2=composed.style,
-                negative_prompt=composed.negative_subject,
-                negative_prompt_2=composed.negative_style,
+                prompt=composed.prompt,
+                negative_prompt=composed.negative_prompt,
                 width=self.settings.width,
                 height=self.settings.height,
                 steps=steps,

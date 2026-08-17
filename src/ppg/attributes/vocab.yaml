@@ -189,8 +189,19 @@ axes:
     # Weight 0 means never drawn at random. The `facial_hair.otherwise` rule
     # assigns it, and its empty prompt keeps "clean-shaven" out of prompts
     # where the phrase would be odd rather than informative.
-    - { value: not_applicable, prompt: "", weight: 0, label: not applicable }
-    - { value: clean_shaven, prompt: clean-shaven, weight: 3.0 }
+    - {
+        value: not_applicable,
+        prompt: "",
+        weight: 0,
+        label: not applicable,
+        negative: "beard, moustache, stubble, facial hair",
+      }
+    - {
+        value: clean_shaven,
+        prompt: clean-shaven,
+        weight: 3.0,
+        negative: "beard, moustache, stubble",
+      }
     - { value: light_stubble, prompt: light stubble, weight: 1.6 }
     - { value: heavy_stubble, prompt: heavy stubble, weight: 0.9 }
     - { value: short_beard, prompt: neatly trimmed short beard, weight: 1.2 }
@@ -200,7 +211,15 @@ axes:
     - { value: goatee, prompt: goatee, weight: 0.3 }
 
   glasses:
-    - { value: none, prompt: "", weight: 3.2 }
+    # An absence needs a negative, not a positive: "no glasses" in a prompt is
+    # as likely to summon glasses as to prevent them. `negative` is the only
+    # way an option like this can actually be honoured.
+    - {
+        value: none,
+        prompt: "",
+        weight: 3.2,
+        negative: "glasses, spectacles, eyewear, sunglasses",
+      }
     - { value: thin_metal, prompt: thin metal-framed glasses, weight: 0.9 }
     - { value: thick_acetate, prompt: thick black acetate glasses, weight: 0.7 }
     - { value: round_frames, prompt: round wire glasses, weight: 0.5 }

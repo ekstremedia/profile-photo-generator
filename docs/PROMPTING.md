@@ -244,9 +244,37 @@ SDE Karras; 15 (`fast: true`) is slightly softer and roughly halves the time,
 which is a good trade for a 128 px avatar and a poor one for a 1024 px
 download. Above about 40 steps the differences are hard to see.
 
-**Prompt length.** CLIP truncates at 77 tokens, and a fully populated prompt
-plus the realism block goes past that — diffusers logs a warning saying so.
-The order in `templates.py` puts framing and subject first for that reason, so
-what gets truncated is the tail of the scene description rather than the
-person. Keep `prompt_extra` short, and if you add to the realism block, remove
-something else.
+**Prompt length.** CLIP truncates at 77 tokens and discards the *tail*, so the
+prompt is built to a hard word budget (`PROMPT_WORD_BUDGET` in
+`templates.py`) with an explicit priority order:
+
+1. framing
+2. identity — age, ancestry, sex, plus the age appearance cues
+3. `prompt_extra`, verbatim
+4. any attribute the caller pinned
+5. skin tone
+6. the realism cue block
+
+Those six are *required* and are never trimmed. Everything else — the LLM's
+invented detail, randomly sampled hair and clothing, lighting, background,
+lens — is filler, added only while budget remains. That ordering is the whole
+reason a request for a red scarf now reaches the model: before it, the scarf
+sat behind forty words of improvised detail and fell off the cliff silently.
+
+If you enlarge the realism block, something else stops fitting. Bump
+`PIPELINE_VERSION` after any change here and look at a contact sheet.
+
+**Why there is one prompt and not two.** SDXL has two text encoders, and
+diffusers exposes the second as `prompt_2`, which looks like a free doubling
+of the budget. It is not: the pooled conditioning embedding comes from the
+second encoder alone, so sending it only photographic style starves the model
+of subject information. Measured on RealVisXL at a fixed seed, asking for a
+90-year-old man in a red scarf with wire glasses:
+
+| prompt routing | scarf | glasses | reads as 90 |
+| --- | --- | --- | --- |
+| subject → encoder 1, style → encoder 2 | no | no | partly |
+| full prompt → both encoders | yes | yes | yes |
+
+So both encoders get the same text, and length is managed by keeping the
+prompt short rather than by splitting it.

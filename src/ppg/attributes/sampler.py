@@ -53,6 +53,11 @@ class Option:
     label: str | None = None
     min: int | None = None
     max: int | None = None
+    # Terms to add to the negative prompt when this option is chosen. Needed
+    # for options that describe an *absence*: "no glasses" has no useful
+    # positive phrasing, so the only way to honour it is to push "glasses"
+    # into the negative prompt.
+    negative: str | None = None
 
     @property
     def phrase(self) -> str:
@@ -74,6 +79,12 @@ class Attributes:
     age: int = 30
     age_range: str = "25-34"
     phrases: dict[str, str] = field(default_factory=dict)
+    # Axes the caller pinned explicitly, as opposed to ones drawn from the
+    # vocabulary. Prompt construction protects these from being trimmed: a
+    # requested attribute must never be the part that falls off the end.
+    pinned: set[str] = field(default_factory=set)
+    # Negative-prompt terms implied by the chosen options.
+    negatives: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         out: dict[str, Any] = dict(self.values)
@@ -126,6 +137,7 @@ def _parse_option(raw: Any) -> Option:
             label=raw.get("label"),
             min=raw.get("min"),
             max=raw.get("max"),
+            negative=raw.get("negative"),
         )
     raise TypeError(f"Unsupported vocabulary entry: {raw!r}")
 
@@ -336,6 +348,12 @@ class Sampler:
             opt = chosen[axis]
             result.values[axis] = opt.value
             result.phrases[axis] = opt.phrase
+            if opt.negative:
+                result.negatives.append(opt.negative)
+
+        result.pinned = {axis for axis in pinned if axis in SAMPLE_ORDER}
+        if exact_age is not None or "age_range" in pinned:
+            result.pinned.add("age")
         return result
 
     def strata(

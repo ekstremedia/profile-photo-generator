@@ -22,7 +22,14 @@ from ppg.prompt.composer import (
     resolve_ollama_model,
 )
 from ppg.prompt.ollama_client import OllamaClient, OllamaError
-from ppg.prompt.templates import FRAMING, FRAMING_PLAIN, NEGATIVE_SUBJECT, REALISM_CUES
+from ppg.prompt.templates import (
+    FRAMING,
+    FRAMING_PLAIN,
+    NEGATIVE_SUBJECT,
+    NEGATIVE_WORD_BUDGET,
+    PROMPT_WORD_BUDGET,
+    REALISM_CUES,
+)
 
 PINS = {
     "sex": "female",
@@ -52,15 +59,13 @@ async def test_the_template_prompt_carries_the_realism_cues_and_the_pinned_trait
     assert result.source == "template"
     # The realism block and the framing are appended by us, never left to a
     # model: they are what make the output read as a photograph.
-    assert FRAMING in result.subject
-    assert REALISM_CUES in result.style
+    assert FRAMING in result.prompt
     assert REALISM_CUES in result.prompt
 
     for phrase in (
         "37 year old",
         "East Asian",
         "female",
-        "marine biologist",
         "thin metal-framed glasses",
         "long straight hair",
         "warm genuine smile",
@@ -70,23 +75,76 @@ async def test_the_template_prompt_carries_the_realism_cues_and_the_pinned_trait
     assert NEGATIVE_SUBJECT in result.negative_prompt
 
 
-async def test_the_prompt_is_split_across_the_two_text_encoders(attrs: Attributes) -> None:
+async def test_the_prompt_stays_inside_the_token_budget(attrs: Attributes) -> None:
+    """CLIP discards the tail beyond 77 tokens, so the prompt must stay short.
+
+    Both of SDXL's text encoders receive this same string - splitting subject
+    and style across the two encoders looks like free capacity but measurably
+    loses requested details, because the pooled conditioning comes from the
+    second encoder alone.
+    """
     result = await TemplateComposer().compose(attrs, seed=1)
-    # Subject in encoder 1, photographic treatment in encoder 2, each with its
-    # own 77-token budget - the split is what stops the realism cues from being
-    # silently truncated away.
-    assert result.prompt == f"{result.subject}, {result.style}"
-    assert result.negative_prompt == f"{result.negative_subject}, {result.negative_style}"
-    assert REALISM_CUES not in result.subject
+
+    assert len(result.prompt.split()) <= PROMPT_WORD_BUDGET
+    assert len(result.negative_prompt.split()) <= NEGATIVE_WORD_BUDGET
 
 
-async def test_extra_text_and_plain_framing_land_in_the_right_half(attrs: Attributes) -> None:
+async def test_what_the_caller_asked_for_survives_the_budget(attrs: Attributes) -> None:
+    """Requested content outranks generated filler when the budget is tight.
+
+    This is the regression that mattered in practice: a request for a red scarf
+    used to sit at the very end of the prompt, behind forty words of invented
+    detail, and fell off the 77-token cliff without a word of warning.
+    """
     result = await TemplateComposer().compose(
-        attrs, seed=1, extra="wearing a wool scarf", negative_extra="hats", plain_framing=True
+        attrs,
+        seed=1,
+        extra="wearing a bright red scarf",
+        negative_extra="hats",
+        plain_framing=True,
     )
-    assert "wearing a wool scarf" in result.subject
-    assert FRAMING_PLAIN in result.subject
-    assert "hats" in result.negative_subject
+
+    assert "wearing a bright red scarf" in result.prompt
+    assert FRAMING_PLAIN in result.prompt
+    assert "hats" in result.negative_prompt
+    # Pinned attributes are caller intent too, so they are protected as well.
+    assert "thin metal-framed glasses" in result.prompt
+    # And the cues that make it photorealistic are never sacrificed either.
+    assert REALISM_CUES in result.prompt
+
+
+async def test_an_elderly_age_gets_explicit_appearance_cues(attrs: Attributes) -> None:
+    """A bare "90 year old" renders as a well-preserved sixty.
+
+    SDXL's training data skews heavily to attractive thirty-somethings, so the
+    visible consequences of age have to be stated positively and youth pushed
+    away in the negative prompt.
+    """
+    old = Sampler().sample(seed=7, pinned={"sex": "male"}, exact_age=90)
+    result = await TemplateComposer().compose(old, seed=7)
+
+    assert "90 year old" in result.prompt
+    assert "very elderly" in result.prompt
+    assert "wrinkled" in result.prompt
+    assert "youthful" in result.negative_prompt
+
+    young = Sampler().sample(seed=7, pinned={"sex": "male"}, exact_age=22)
+    young_result = await TemplateComposer().compose(young, seed=7)
+    assert "elderly" in young_result.negative_prompt
+
+
+async def test_absent_features_are_pushed_into_the_negative_prompt(attrs: Attributes) -> None:
+    """ "No glasses" has no useful positive phrasing.
+
+    Writing "no glasses" into a prompt is as likely to summon glasses as to
+    prevent them, so options describing an absence carry negative terms in
+    vocab.yaml instead.
+    """
+    bare = Sampler().sample(seed=3, pinned={"glasses": "none", "facial_hair": "clean_shaven"})
+    result = await TemplateComposer().compose(bare, seed=3)
+
+    assert "glasses" in result.negative_prompt
+    assert "beard" in result.negative_prompt
 
 
 async def test_composing_twice_with_the_same_seed_is_identical(attrs: Attributes) -> None:

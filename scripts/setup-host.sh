@@ -286,6 +286,44 @@ else
     info "        docker compose --profile ollama up -d"
     blank
 
+    # Checking the drop-in was written is not the same as checking it took
+    # effect. A second Ollama - one started by a desktop session, or a distro
+    # package alongside the official install - will already hold port 11434,
+    # and the systemd unit then fails to bind and sits in a restart loop while
+    # the old process carries on serving localhost. Reporting "done" in that
+    # situation sends people to debug Docker networking for an hour.
+    verify_ollama_bind() {
+        blank
+        command -v ss > /dev/null 2>&1 || {
+            info "  ss is not installed; cannot verify the listening socket."
+            return 0
+        }
+
+        local sockets
+        sockets="$(ss -ltnp 'sport = :11434' 2>/dev/null | tail -n +2)"
+        info "  Listening sockets on 11434:"
+        printf '%s\n' "${sockets:-  (none)}"
+        blank
+
+        if printf '%s' "$sockets" | grep -qE '(0\.0\.0\.0|\*|\[::\]):11434'; then
+            info "  Ollama is reachable from containers."
+            return 0
+        fi
+
+        warn "Ollama is still bound to localhost. The drop-in did not take effect."
+        info "  Most likely another Ollama already holds the port, so the systemd"
+        info "  unit cannot bind. Check which process owns it and how it started:"
+        info "    systemctl status ollama --no-pager"
+        info "    ss -ltnp 'sport = :11434'"
+        info "    ps -o pid,ppid,cmd -p \"\$(pgrep -f 'ollama serve' | head -1)\""
+        blank
+        info "  If a desktop session or a second install started it, stop that one"
+        info "  and 'sudo systemctl restart ollama'. Two Ollama binaries in"
+        info "  /usr/bin and /usr/local/bin is a common cause."
+        info "  Or sidestep it entirely: docker compose --profile ollama up -d"
+        return 1
+    }
+
     if confirm "Write the drop-in and restart Ollama?"; then
         run "${SUDO[@]}" mkdir -p "$OLLAMA_DROPIN_DIR"
         printf '  $ tee %s\n' "$OLLAMA_DROPIN"
@@ -295,11 +333,10 @@ else
             | "${SUDO[@]}" tee "$OLLAMA_DROPIN" > /dev/null
         run "${SUDO[@]}" systemctl daemon-reload
         run "${SUDO[@]}" systemctl restart ollama
-        if command -v ss > /dev/null 2>&1; then
-            blank
-            info "Listening sockets on 11434 (expect 0.0.0.0 or *):"
-            ss -ltn 'sport = :11434' || true
-        fi
+        # `|| true` because a failed verification is worth reporting loudly but
+        # is not a reason to abort under `set -e` - the remaining guidance is
+        # exactly what someone in that state needs to read.
+        verify_ollama_bind || true
     fi
 fi
 

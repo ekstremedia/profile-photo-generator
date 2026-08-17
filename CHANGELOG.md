@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [Unreleased]
+
+### Fixed
+
+- **Requested attributes were being silently discarded.** Prompts are now
+  assembled to a word budget in an explicit priority order — framing, identity
+  and age cues, `prompt_extra`, pinned attributes, skin tone, realism cues —
+  with generated filler added only if room remains. Previously `prompt_extra`
+  was appended last, so a request for a red scarf sat behind forty words of
+  invented detail and fell past CLIP's 77-token cutoff without any warning that
+  it had been dropped.
+- **Ages at the extremes did not render.** A bare "90 year old" produced a
+  well-preserved sixty, because SDXL's training data skews heavily towards
+  attractive thirty-somethings. Each age band now carries explicit appearance
+  cues ("very elderly, deeply wrinkled skin, age spots, sparse white hair") and
+  a matching push away from youth in the negative prompt.
+- **Options describing an absence had no effect.** "No glasses" in a prompt is
+  as likely to summon glasses as to prevent them. Vocabulary options can now
+  carry a `negative` field, used by `glasses: none` and the clean-shaven
+  facial-hair values.
+- **Reverted the two-text-encoder prompt split.** Routing the subject to
+  encoder 1 and photographic style to encoder 2 appeared to double the token
+  budget, but SDXL's pooled conditioning comes from the second encoder alone,
+  so it measurably lost requested details — at a fixed seed, a red scarf and
+  wire glasses both vanished. Both encoders now receive the same full prompt.
+
 ## [0.1.0] - 2026-08-17
 
 Initial release.
@@ -79,10 +105,9 @@ Initial release.
 - Jobs are in-memory and do not survive a restart. The avatars they produce do.
 - The safety filter is a narrow text filter, not a classifier. See
   [SECURITY.md](SECURITY.md).
-- Prompts are split across SDXL's two text encoders (subject, then photographic
-  style) so each half gets its own 77-token CLIP budget. A very long
-  `prompt_extra` can still push the subject half over, in which case its tail is
-  dropped; the realism cues in the second half are unaffected.
+- Prompts are built to a word budget with a fixed priority order, so CLIP's
+  77-token truncation removes generated filler rather than anything the caller
+  asked for. A very long `prompt_extra` can still overflow on its own.
 
 [Unreleased]: https://github.com/ekstremedia/profile-photo-generator/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/ekstremedia/profile-photo-generator/releases/tag/v0.1.0

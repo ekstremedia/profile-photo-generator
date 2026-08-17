@@ -57,9 +57,9 @@ class OpenAIImagesBackend:
         self._loaded = False
 
     async def generate(self, spec: RenderSpec) -> Image.Image:
-        prompt = spec.full_prompt
-        if spec.full_negative_prompt:
-            prompt = f"{prompt}. Avoid: {spec.full_negative_prompt}"
+        prompt = spec.prompt
+        if spec.negative_prompt:
+            prompt = f"{prompt}. Avoid: {spec.negative_prompt}"
 
         body: dict[str, Any] = {
             "model": self.settings.openai_model,

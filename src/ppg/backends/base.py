@@ -19,10 +19,10 @@ from ppg.config import Settings
 class RenderSpec:
     """One image request.
 
-    ``prompt`` and ``prompt_2`` are the two halves described in
-    ``prompt/templates.py``: the subject and the photographic style. SDXL feeds
-    them to its two text encoders, each with its own 77-token budget. Backends
-    with a single text input should join them with ", ".
+    A single prompt: on SDXL both text encoders receive the same text, because
+    the pooled conditioning comes from the second encoder alone and giving it
+    anything other than the full prompt measurably costs adherence. See
+    ``prompt/templates.py``.
     """
 
     prompt: str
@@ -32,18 +32,6 @@ class RenderSpec:
     steps: int
     guidance: float
     seed: int
-    prompt_2: str = ""
-    negative_prompt_2: str = ""
-
-    @property
-    def full_prompt(self) -> str:
-        return f"{self.prompt}, {self.prompt_2}" if self.prompt_2 else self.prompt
-
-    @property
-    def full_negative_prompt(self) -> str:
-        if self.negative_prompt_2:
-            return f"{self.negative_prompt}, {self.negative_prompt_2}"
-        return self.negative_prompt
 
 
 @runtime_checkable

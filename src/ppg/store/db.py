@@ -38,13 +38,10 @@ CREATE INDEX IF NOT EXISTS idx_avatars_created  ON avatars(created_at DESC);
 
 -- Composed prompts are cached so a `by-seed` avatar keeps the exact wording it
 -- was first generated with, even if the LLM would phrase it differently today.
--- Stored as the four halves the two text encoders receive, not as one string.
 CREATE TABLE IF NOT EXISTS prompt_cache (
     key             TEXT PRIMARY KEY,
-    subject         TEXT NOT NULL,
-    style           TEXT NOT NULL,
-    negative_subject TEXT NOT NULL,
-    negative_style  TEXT NOT NULL,
+    prompt          TEXT NOT NULL,
+    negative_prompt TEXT NOT NULL,
     persona         TEXT,
     source          TEXT NOT NULL,
     created_at      TEXT NOT NULL
@@ -92,7 +89,7 @@ class Database:
         if not existing:
             return
         columns = {row[1] for row in self._conn.execute("PRAGMA table_info(prompt_cache)")}
-        if "subject" not in columns:
+        if "prompt" not in columns:
             self._conn.execute("DROP TABLE prompt_cache")
             self._conn.commit()
 
@@ -195,10 +192,8 @@ class Database:
         if not row:
             return None
         return {
-            "subject": row["subject"],
-            "style": row["style"],
-            "negative_subject": row["negative_subject"],
-            "negative_style": row["negative_style"],
+            "prompt": row["prompt"],
+            "negative_prompt": row["negative_prompt"],
             "persona": json.loads(row["persona"]) if row["persona"] else None,
             "source": row["source"],
         }
@@ -206,27 +201,23 @@ class Database:
     def put_prompt(
         self,
         key: str,
-        subject: str,
-        style: str,
-        negative_subject: str,
-        negative_style: str,
+        prompt: str,
+        negative_prompt: str,
         persona: dict[str, Any] | None,
         source: str,
     ) -> None:
         with self._lock:
             self._conn.execute(
                 """
-                INSERT INTO prompt_cache (key, subject, style, negative_subject,
-                                          negative_style, persona, source, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO prompt_cache (key, prompt, negative_prompt, persona,
+                                          source, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(key) DO NOTHING
                 """,
                 (
                     key,
-                    subject,
-                    style,
-                    negative_subject,
-                    negative_style,
+                    prompt,
+                    negative_prompt,
                     json.dumps(persona, ensure_ascii=False) if persona else None,
                     source,
                     _now(),

@@ -3,13 +3,21 @@ from ppg.prompt.composer import (
     TemplateComposer,
     build_composer,
 )
-from ppg.prompt.templates import BASE_NEGATIVE, REALISM_CUES, build_template_prompt
+from ppg.prompt.templates import (
+    NEGATIVE_STYLE,
+    NEGATIVE_SUBJECT,
+    REALISM_CUES,
+    build_negative,
+    build_prompt,
+)
 
 __all__ = [
-    "BASE_NEGATIVE",
+    "NEGATIVE_STYLE",
+    "NEGATIVE_SUBJECT",
     "REALISM_CUES",
     "PromptComposer",
     "TemplateComposer",
     "build_composer",
-    "build_template_prompt",
+    "build_negative",
+    "build_prompt",
 ]

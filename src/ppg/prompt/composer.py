@@ -36,12 +36,10 @@ from ppg.attributes.sampler import Attributes
 from ppg.config import Settings
 from ppg.prompt.ollama_client import OllamaClient, OllamaError
 from ppg.prompt.templates import (
-    FRAMING,
-    FRAMING_PLAIN,
-    REALISM_CUES,
+    DETAIL_AXES,
+    age_descriptors,
     build_negative,
-    build_style,
-    build_subject,
+    build_prompt,
 )
 from ppg.schemas import Persona
 
@@ -65,29 +63,16 @@ PREFERRED_MODELS: tuple[str, ...] = (
 
 @dataclass
 class ComposeResult:
-    """Prompts ready to hand to an image backend.
+    """A prompt pair ready to hand to an image backend.
 
-    Held as four halves rather than two strings because SDXL has two text
-    encoders with independent 77-token budgets. ``subject`` describes the
-    person, ``style`` the photographic treatment; the combined ``prompt``
-    property is what gets stored, displayed and embedded in image metadata.
-    See ``templates.py`` for why.
+    One prompt, not two halves: both of SDXL's text encoders receive the same
+    text. See ``templates.py`` for the measurement behind that.
     """
 
-    subject: str
-    style: str
-    negative_subject: str
-    negative_style: str
+    prompt: str
+    negative_prompt: str
     persona: Persona | None
     source: Literal["llm", "template"]
-
-    @property
-    def prompt(self) -> str:
-        return f"{self.subject}, {self.style}"
-
-    @property
-    def negative_prompt(self) -> str:
-        return f"{self.negative_subject}, {self.negative_style}"
 
 
 class PromptComposer(Protocol):
@@ -129,12 +114,9 @@ class TemplateComposer:
         negative_extra: str = "",
         plain_framing: bool = False,
     ) -> ComposeResult:
-        negative_subject, negative_style = build_negative(negative_extra)
         return ComposeResult(
-            subject=build_subject(attrs, extra=extra, plain_framing=plain_framing),
-            style=build_style(attrs),
-            negative_subject=negative_subject,
-            negative_style=negative_style,
+            prompt=build_prompt(attrs, extra=extra, plain_framing=plain_framing),
+            negative_prompt=build_negative(negative_extra, age=attrs.age, implied=attrs.negatives),
             persona=self.persona(attrs, seed),
             source="template",
         )
@@ -214,6 +196,14 @@ them wastes the token budget.
 same age as given, their occupation, a city, and a one-line bio.
 
 Hard rules:
+- Anything listed as "already in the prompt" is fixed. Do not restate it and \
+do not describe anything that contradicts it. If a red scarf is already \
+stated, do not put the person in a polo neck.
+- Attributes marked [REQUIRED] were chosen deliberately. Everything you write \
+must be consistent with them.
+- Match the stated age. If the age note says the person is very elderly, the \
+details you invent must reflect that - thin white hair, not gray-brown; \
+liver-spotted hands, not smooth ones.
 - The person must not exist. Never use the name of a real or identifiable \
 person, living or dead, and never describe someone as resembling one.
 - Keep the description internally consistent. An outdoor manual worker does \
@@ -244,7 +234,7 @@ class LLMComposer:
         negative_extra: str = "",
         plain_framing: bool = False,
     ) -> ComposeResult:
-        user = self._user_message(attrs, plain_framing=plain_framing)
+        user = self._user_message(attrs, plain_framing=plain_framing, extra=extra)
         schema = _LLMOutput.model_json_schema()
 
         last_error: Exception | None = None
@@ -267,40 +257,18 @@ class LLMComposer:
         else:
             raise OllamaError(str(last_error))
 
-        framing = FRAMING_PLAIN if plain_framing else FRAMING
-        # 40 words plus the identity clause lands just under the 77-token CLIP
-        # budget. Going higher starts clipping the tail of the description.
-        description = _cap_words(parsed.description.strip().rstrip(","), 40)
-
-        # The identity clause is assembled here rather than left to the model,
-        # and placed immediately after the framing. Two reasons: SDXL weights
-        # earlier tokens more heavily, and a model asked to write the whole
-        # description tends to soften or drop the ancestry term - which shows
-        # up as a batch of visibly varied attributes rendering as the same
-        # handful of faces.
-        identity = " ".join(
-            part
-            for part in (
-                f"{attrs.age} year old",
-                attrs.phrases.get("ethnicity", ""),
-                attrs.phrases.get("sex", "person"),
-            )
-            if part
-        )
-        skin = attrs.phrases.get("skin_tone", "")
-        # Models restate the skin tone often enough that it is worth removing
-        # the echo rather than shipping "light olive skin, light olive skin".
-        description = _drop_phrase(description, skin)
-        subject_parts = [framing, identity, skin, description]
-        if extra:
-            subject_parts.append(extra)
-
-        # Lighting and background come from the sampled attributes rather than
-        # the model: they belong in the style half, and the model is told not
-        # to mention them.
-        scene = [attrs.phrases.get(axis, "") for axis in ("lighting", "background", "camera")]
-        style = ", ".join([*(s for s in scene if s), REALISM_CUES])
-        negative_subject, negative_style = build_negative(negative_extra)
+        # The model's contribution is *filler*: it is appended after everything
+        # the caller asked for, and is the first thing dropped when the budget
+        # runs out. Identity, age and pinned attributes are assembled by
+        # `build_prompt` and never depend on the model getting it right.
+        description = parsed.description.strip().rstrip(",")
+        for echo in (
+            attrs.phrases.get("skin_tone", ""),
+            attrs.phrases.get("ethnicity", ""),
+        ):
+            # Models restate these often enough that it is worth removing the
+            # echo rather than shipping "light olive skin, light olive skin".
+            description = _drop_phrase(description, echo)
 
         persona = parsed.persona
         # The model is asked for the given age but does not always comply.
@@ -308,25 +276,42 @@ class LLMComposer:
             persona = persona.model_copy(update={"age": attrs.age})
 
         return ComposeResult(
-            subject=", ".join(p for p in subject_parts if p),
-            style=style,
-            negative_subject=negative_subject,
-            negative_style=negative_style,
+            prompt=build_prompt(
+                attrs, extra=extra, detail=description, plain_framing=plain_framing
+            ),
+            negative_prompt=build_negative(negative_extra, age=attrs.age, implied=attrs.negatives),
             persona=persona,
             source="llm",
         )
 
     @staticmethod
-    def _user_message(attrs: Attributes, *, plain_framing: bool) -> str:
+    def _user_message(attrs: Attributes, *, plain_framing: bool, extra: str = "") -> str:
         # Age, ancestry, sex and skin tone are still listed even though the
         # model must not restate them: they are needed for the persona and to
         # keep the details it does write coherent with the person.
-        lines = [f"age: {attrs.age}"]
+        appearance, _ = age_descriptors(attrs.age)
+        lines = [f"age: {attrs.age}" + (f" ({appearance})" if appearance else "")]
+
         skip = {"camera", "lighting", "background"}
         for axis, phrase in attrs.phrases.items():
             if axis in skip or not phrase:
                 continue
-            lines.append(f"{axis}: {phrase}")
+            marker = " [REQUIRED]" if axis in attrs.pinned else ""
+            lines.append(f"{axis}: {phrase}{marker}")
+
+        # Anything already written into the prompt by hand is listed so the
+        # model does not repeat it or, worse, describe something that
+        # contradicts it - a requested red scarf plus an invented tweed collar
+        # produces neither.
+        stated = [
+            attrs.phrases[axis]
+            for axis in DETAIL_AXES
+            if axis in attrs.pinned and attrs.phrases.get(axis)
+        ]
+        if extra:
+            stated.append(extra)
+        if stated:
+            lines.append("already in the prompt, do not repeat or contradict: " + "; ".join(stated))
         if plain_framing:
             lines.append("framing: plain neutral portrait, no styling")
         return "\n".join(lines)
@@ -385,23 +370,6 @@ def _drop_phrase(text: str, phrase: str) -> str:
         if clause and clause.lower() != target
     ]
     return ", ".join(kept)
-
-
-def _cap_words(text: str, limit: int) -> str:
-    """Hard cap on the model's description length.
-
-    The system prompt asks for 30-45 words; small models sometimes ignore that
-    and write a paragraph, whose tail then gets silently cut by the text
-    encoder. Trimming here at least loses whole clauses rather than half a
-    word, and keeps the important, earlier descriptors.
-    """
-    words = text.split()
-    if len(words) <= limit:
-        return text
-    trimmed = " ".join(words[:limit])
-    # Prefer to end on a clause boundary.
-    cut = trimmed.rfind(",")
-    return trimmed[:cut] if cut > len(trimmed) // 2 else trimmed
 
 
 async def resolve_ollama_model(client: OllamaClient, configured: str) -> str | None:

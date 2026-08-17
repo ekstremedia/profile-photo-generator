@@ -330,16 +330,20 @@ the card.
 > The following part of your input was truncated because CLIP can only handle
 > sequences up to 77 tokens
 
-**This is expected and harmless.** A fully populated prompt — framing, subject,
-skin tone, hair, glasses, expression, clothing, lighting, background, lens, plus
-the realism cue block — exceeds 77 tokens. The prompt is deliberately ordered
-so the important parts come first: framing and subject, then appearance, then
-scene, then cues. What gets truncated is the tail.
+**Usually harmless, occasionally a real symptom.** Prompts are built to a word
+budget (`PROMPT_WORD_BUDGET` in `prompt/templates.py`) that normally keeps them
+under the limit, so this warning should be rare. When it does appear it is
+because a long `prompt_extra`, or a long free-form `profession`, pushed the
+*required* part of the prompt over on its own — and required parts are never
+trimmed, precisely so that what you asked for is not what gets thrown away.
 
-If you want to lose less: keep `prompt_extra` short, or trim the realism block
-in `prompt/templates.py` (and bump `PIPELINE_VERSION`). Do not reorder it
-without looking at a contact sheet afterwards — the order is what makes the
-truncation safe.
+What gets discarded is always the tail. The ordering is: framing, identity and
+age cues, your `prompt_extra`, your pinned attributes, skin tone, realism cues,
+then filler. So a warning means the filler is gone and possibly the last of the
+realism cues; it does not mean your request was dropped.
+
+If you see it constantly, shorten `prompt_extra`. If you want a bigger budget,
+raise `PROMPT_WORD_BUDGET`, accept the truncation, and bump `PIPELINE_VERSION`.
 
 ---
 
