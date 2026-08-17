@@ -1,0 +1,118 @@
+# ---------------------------------------------------------------------------
+# Name pools for the template (no-LLM) persona generator.
+#
+# Only used when Ollama is unavailable or PPG_COMPOSER=template. When Ollama is
+# running it writes richer, more varied personas and this file is ignored.
+#
+# These are ordinary, common given names and surnames. They are combined at
+# random and are not intended to refer to any real person. Additions and
+# corrections from people who know a region better than this file does are
+# very welcome - see CONTRIBUTING.md.
+# ---------------------------------------------------------------------------
+version: 1
+
+# Maps an `ethnicity` vocabulary value to a pool below.
+map:
+  northern_european: nordic
+  southern_european: southern_european
+  eastern_european: eastern_european
+  west_african: west_african
+  east_african: east_african
+  north_african: arabic
+  middle_eastern: arabic
+  afro_caribbean: anglophone
+  african_american: anglophone
+  south_asian: south_asian
+  east_asian: east_asian
+  southeast_asian: southeast_asian
+  central_asian: central_asian
+  latin_american: latin_american
+  indigenous_american: anglophone
+  pacific_islander: pacific
+  mixed_heritage: anglophone
+
+pools:
+  nordic:
+    female: [Ingrid, Solveig, Kari, Astrid, Linnea, Maja, Hanne, Elin]
+    male: [Lars, Håkon, Espen, Jonas, Mikkel, Anders, Sindre, Erik]
+    family: [Berg, Haugen, Lindqvist, Nilsen, Dahl, Solberg, Vik, Aasen]
+    cities: [Bergen, Tromsø, Uppsala, Aarhus, Turku, Trondheim]
+
+  southern_european:
+    female: [Chiara, Elena, Sofia, Marta, Núria, Ana, Giulia, Katerina]
+    male: [Matteo, Nikos, Joaquim, Andrea, Pau, Stefanos, Rui, Lorenzo]
+    family: [Ferrari, Moretti, Papadakis, Costa, Vidal, Serrano, Marchetti, Duarte]
+    cities: [Bologna, Thessaloniki, Porto, Valencia, Palermo, Split]
+
+  eastern_european:
+    female: [Zofia, Katarína, Ivana, Anastasia, Lenka, Mira, Agnieszka, Dorina]
+    male: [Tomasz, Miloš, Andrei, Bogdan, Jakub, Levente, Dmytro, Vasile]
+    family: [Kowalczyk, Novák, Petrov, Horváth, Marinescu, Kovač, Shevchenko, Zeman]
+    cities: [Kraków, Brno, Cluj-Napoca, Lviv, Plovdiv, Debrecen]
+
+  west_african:
+    female: [Adaeze, Fatoumata, Abena, Chiamaka, Aissatou, Yaa, Nneka, Mariama]
+    male: [Kwabena, Oluwaseun, Ibrahima, Chidi, Kofi, Emeka, Amadou, Yaw]
+    family: [Okafor, Diallo, Mensah, Adeyemi, Bamba, Osei, Traoré, Nwosu]
+    cities: [Accra, Lagos, Dakar, Kumasi, Abidjan, Bamako]
+
+  east_african:
+    female: [Amina, Selamawit, Wanjiru, Halima, Tsion, Neema, Aisha, Bethlehem]
+    male: [Tewodros, Kiptoo, Yonas, Juma, Mekonnen, Baraka, Elias, Otieno]
+    family: [Haile, Wanjiku, Abdi, Mwangi, Girma, Kimani, Tesfaye, Okello]
+    cities: [Addis Ababa, Nairobi, Dar es Salaam, Kampala, Mombasa, Arusha]
+
+  arabic:
+    female: [Layla, Nour, Yasmin, Rania, Hoda, Salma, Amira, Zahra]
+    male: [Karim, Tarek, Youssef, Omar, Hicham, Rami, Bilal, Nabil]
+    family: [Haddad, El-Masri, Benali, Khoury, Saleh, Nasser, Idrissi, Farouk]
+    cities: [Casablanca, Amman, Beirut, Tunis, Alexandria, Muscat]
+
+  anglophone:
+    female: [Imani, Danielle, Simone, Keisha, Naomi, Alyssa, Camille, Jordan]
+    male: [Marcus, Andre, Desmond, Tyrone, Julian, Malik, Errol, Curtis]
+    family: [Whitfield, Baptiste, Grant, Robinson, Clarke, Ellis, Boateng, Reid]
+    cities: [Bristol, Atlanta, Toronto, Birmingham, Kingston, Philadelphia]
+
+  south_asian:
+    female: [Priya, Meera, Anjali, Fatima, Nisha, Ishani, Rukhsana, Divya]
+    male: [Arjun, Rahul, Imran, Sandeep, Vikram, Zubair, Nikhil, Farhan]
+    family: [Sharma, Iyer, Chowdhury, Reddy, Bhatt, Qureshi, Nair, Fernando]
+    cities: [Pune, Dhaka, Kochi, Lahore, Colombo, Ahmedabad]
+
+  east_asian:
+    female: [Mei, Ji-woo, Sakura, Xiaoyu, Hana, Yuna, Lin, Aiko]
+    male: [Haruto, Min-jun, Wei, Kenji, Jian, Sung-ho, Ren, Takumi]
+    family: [Tanaka, Kim, Zhang, Nakamura, Park, Chen, Sato, Liu]
+    cities: [Sapporo, Busan, Chengdu, Kaohsiung, Fukuoka, Hangzhou]
+
+  southeast_asian:
+    female: [Siti, Linh, Maricel, Ratana, Dewi, Thuy, Amara, Nadia]
+    male: [Bayu, Duc, Somchai, Rizal, Minh, Arif, Krit, Emmanuel]
+    family: [Nguyen, Santos, Wijaya, Tan, Suharto, Phan, Reyes, Lim]
+    cities: [Da Nang, Cebu, Yogyakarta, Chiang Mai, Penang, Surabaya]
+
+  central_asian:
+    female: [Aigerim, Gulnara, Dilnoza, Zarina, Aisulu, Madina, Nargiza, Saltanat]
+    male: [Ruslan, Timur, Bekzat, Alisher, Nurlan, Sanjar, Daniyar, Farrukh]
+    family: [Abdullayev, Nurmagambetov, Karimov, Iskakov, Tashkentov, Yusupova, Bekov, Rakhimov]
+    cities: [Almaty, Tashkent, Bishkek, Samarkand, Astana, Dushanbe]
+
+  latin_american:
+    female: [Valentina, Camila, Renata, Lucía, Beatriz, Ximena, Paula, Carolina]
+    male: [Mateo, Thiago, Emiliano, Diego, Rodrigo, Facundo, Andrés, Joaquín]
+    family: [Gutiérrez, Da Silva, Morales, Rojas, Herrera, Peralta, Vargas, Quispe]
+    cities: [Medellín, Curitiba, Guadalajara, Rosario, Cuenca, Valparaíso]
+
+  pacific:
+    female: [Moana, Sina, Ana, Leilani, Mereana, Talei, Hina, Vaitiare]
+    male: [Tane, Sione, Manu, Rewi, Ratu, Kalani, Tavita, Aleki]
+    family: [Tuilagi, Kahananui, Ngata, Fifita, Vakatawa, Waqa, Tupou, Aholelei]
+    cities: [Suva, Apia, Nukuʻalofa, Rarotonga, Papeete, Whangārei]
+
+# Short bio fragments, filled with the persona's occupation and city.
+bio_templates:
+  - "{occupation} in {city}."
+  - "Works as a {occupation}, based in {city}."
+  - "{city}-based {occupation}."
+  - "{occupation}. Lives in {city}."

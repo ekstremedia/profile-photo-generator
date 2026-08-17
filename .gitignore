@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Project data
+data/
+outputs/
+# Default --out directory for `ppg generate` and `ppg batch`.
+out/
+*.db
+*.db-wal
+*.db-shm
+
+# Model weights / caches
+models/
+*.safetensors
+*.ckpt
+*.bin
+.cache/
+hf-cache/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+*.swp

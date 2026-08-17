@@ -1,0 +1,69 @@
+name: Model suggestion
+description: Suggest a different image model as a default or a documented option
+labels: ["model"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        The default is chosen for photorealistic faces at sane VRAM on consumer
+        hardware, not for benchmark scores. A suggestion that wins on faces and
+        fits in 12GB is very welcome.
+
+  - type: input
+    id: repo-id
+    attributes:
+      label: Model repo id
+      description: The Hugging Face id, exactly as `from_pretrained` would take it.
+      placeholder: "SG161222/RealVisXL_V5.0"
+    validations:
+      required: true
+
+  - type: input
+    id: vram
+    attributes:
+      label: VRAM needed
+      description: |
+        At fp16, at 1024x1024, with the settings you tested. Say whether that
+        was with or without CPU offload.
+      placeholder: "~9GB at fp16, 1024x1024, no offload"
+    validations:
+      required: true
+
+  - type: input
+    id: licence
+    attributes:
+      label: Licence
+      description: |
+        Including whether commercial use and synthetic-face generation are
+        permitted. A model we cannot document a licence for cannot be a default.
+      placeholder: "CreativeML Open RAIL++-M"
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why is it better than the current default?
+      description: |
+        Be concrete: skin texture, age range, ancestry coverage, hands, glasses,
+        how it behaves with the realism cue block in `prompt/templates.py`.
+        Comparison images generated from the same seed and prompt are ideal.
+    validations:
+      required: true
+
+  - type: input
+    id: architecture
+    attributes:
+      label: Architecture
+      description: SDXL, SD3.5, Flux, something else - it decides how much code this needs.
+      placeholder: "SDXL"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I have actually run this model locally, not just read about it
+          required: true

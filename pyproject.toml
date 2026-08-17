@@ -1,0 +1,91 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "profile-photo-generator"
+version = "0.1.0"
+description = "Generate photorealistic synthetic profile photos locally, with a HTTP API, CLI and Docker setup."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "ekstremedia" }]
+keywords = ["avatar", "stable-diffusion", "sdxl", "ollama", "fastapi", "profile-photo"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Framework :: FastAPI",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Multimedia :: Graphics",
+]
+
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "httpx>=0.27",
+    "pillow>=10.3",
+    "pyyaml>=6.0",
+    "typer>=0.12",
+    "rich>=13.7",
+    "python-multipart>=0.0.9",
+]
+
+[project.optional-dependencies]
+# Installed separately in Docker so torch comes from the CUDA wheel index.
+# See docs/MODELS.md for the correct index URL for your GPU.
+gpu = [
+    "torch>=2.4",
+    "torchvision>=0.19",
+    "diffusers>=0.31",
+    "transformers>=4.44",
+    "accelerate>=0.33",
+    "safetensors>=0.4",
+    "sentencepiece>=0.2",
+]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.6",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+]
+
+[project.scripts]
+ppg = "ppg.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/ekstremedia/profile-photo-generator"
+Issues = "https://github.com/ekstremedia/profile-photo-generator/issues"
+Documentation = "https://github.com/ekstremedia/profile-photo-generator/tree/main/docs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ppg"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+ignore = ["B008"]  # FastAPI Depends() in defaults is idiomatic
+
+[tool.mypy]
+# 3.12 rather than our 3.11 floor: numpy ships stubs using 3.12-only `type`
+# statements, which mypy refuses to parse under an older target. The code
+# itself stays 3.11-compatible and CI runs the tests on both.
+python_version = "3.12"
+packages = ["ppg"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = ["ignore::DeprecationWarning"]
