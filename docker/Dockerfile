@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.7
 #
-# Profile Photo Generator - CUDA-capable image, built on plain python:3.12-slim.
+# Profile Photo Generator - CUDA-capable image, built on plain python:3.14-slim.
 #
 # Why not an `nvidia/cuda:*` base image? The PyTorch wheel published on PyPI for
 # Linux already ships the CUDA runtime, cuDNN and cuBLAS it needs, bundled as
