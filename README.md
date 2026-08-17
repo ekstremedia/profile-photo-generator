@@ -71,6 +71,22 @@ Three compose profiles cover the other cases: `--profile cpu` for a machine
 with no NVIDIA GPU, `--profile ollama` to run Ollama in a container as well,
 and `--profile dev` for live reload against the working tree.
 
+### Or use the Makefile
+
+Same commands, fewer things to remember. `make help` lists everything.
+
+```bash
+make setup        # host prep, asks before each step
+make up           # start          make down     # stop
+make health       # wait until the model is loaded
+make logs         # follow the logs
+make rebuild      # after changing code - the image holds a copy, not a mount
+make open         # open the gallery
+```
+
+The compose service is named `api` while the project is named `ppg`, which is
+the detail the Makefile exists to hide.
+
 ### Without Docker
 
 ```bash
