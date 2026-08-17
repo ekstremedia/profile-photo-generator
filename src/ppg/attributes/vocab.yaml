@@ -1,0 +1,318 @@
+# ---------------------------------------------------------------------------
+# Attribute vocabulary
+#
+# This file is the creative surface of the project. Editing it changes what
+# kind of people get generated - no Python required. Pull requests that add or
+# rebalance entries are very welcome.
+#
+# Each axis holds a list of options. An option is either a plain string, or a
+# mapping:
+#
+#   - value:  the canonical token, used in API requests and cache keys
+#     weight: relative sampling weight (default 1.0)
+#     prompt: how it is phrased in the image prompt (defaults to `value`)
+#     label:  human-readable name for the UI (defaults to `value`)
+#     min/max: numeric bounds, only meaningful for `age_range`
+#
+# Weights are relative within an axis, they do not need to sum to anything.
+# ---------------------------------------------------------------------------
+version: 1
+
+axes:
+  sex:
+    - value: female
+      weight: 1.0
+    - value: male
+      weight: 1.0
+    - value: androgynous
+      weight: 0.08
+      prompt: androgynous person
+
+  # Weighted towards working age, since these are mostly app avatars, but the
+  # tails are deliberately non-zero - most avatar sets are far too young.
+  age_range:
+    - { value: "18-24", min: 18, max: 24, weight: 1.0 }
+    - { value: "25-34", min: 25, max: 34, weight: 1.7 }
+    - { value: "35-44", min: 35, max: 44, weight: 1.6 }
+    - { value: "45-54", min: 45, max: 54, weight: 1.2 }
+    - { value: "55-64", min: 55, max: 64, weight: 0.9 }
+    - { value: "65-79", min: 65, max: 79, weight: 0.6 }
+    - { value: "80-90", min: 80, max: 90, weight: 0.2 }
+
+  # Regional ancestry descriptors. Weights are close to flat on purpose: the
+  # goal is a varied avatar set, not a demographic simulation.
+  ethnicity:
+    - { value: northern_european, prompt: Northern European, weight: 1.0 }
+    - { value: southern_european, prompt: Southern European, weight: 1.0 }
+    - { value: eastern_european, prompt: Eastern European, weight: 0.9 }
+    - { value: west_african, prompt: West African, weight: 1.0 }
+    - { value: east_african, prompt: East African, weight: 0.9 }
+    - { value: north_african, prompt: North African, weight: 0.8 }
+    - { value: afro_caribbean, prompt: Afro-Caribbean, weight: 0.8 }
+    - { value: african_american, prompt: African American, weight: 1.0 }
+    - { value: middle_eastern, prompt: Middle Eastern, weight: 1.0 }
+    - { value: south_asian, prompt: South Asian, weight: 1.1 }
+    - { value: east_asian, prompt: East Asian, weight: 1.1 }
+    - { value: southeast_asian, prompt: Southeast Asian, weight: 1.0 }
+    - { value: central_asian, prompt: Central Asian, weight: 0.6 }
+    - { value: latin_american, prompt: Latin American, weight: 1.1 }
+    - { value: indigenous_american, prompt: Indigenous American, weight: 0.6 }
+    - { value: pacific_islander, prompt: Pacific Islander, weight: 0.5 }
+    - { value: mixed_heritage, prompt: mixed heritage, weight: 0.9 }
+
+  # Fitzpatrick scale, phrased for a diffusion model rather than a dermatologist.
+  # The sampler biases this towards tones plausible for the drawn ethnicity.
+  skin_tone:
+    - { value: fitzpatrick_i, label: "I - very fair", prompt: very fair pale skin, weight: 0.7 }
+    - { value: fitzpatrick_ii, label: "II - fair", prompt: fair skin, weight: 1.0 }
+    - { value: fitzpatrick_iii, label: "III - light olive", prompt: light olive skin, weight: 1.1 }
+    - { value: fitzpatrick_iv, label: "IV - olive", prompt: olive tan skin, weight: 1.1 }
+    - { value: fitzpatrick_v, label: "V - brown", prompt: brown skin, weight: 1.0 }
+    - { value: fitzpatrick_vi, label: "VI - deep", prompt: deep dark brown skin, weight: 1.0 }
+
+  # A deliberately broad spread of trades, care work, manual work, service work
+  # and desk work. Avatar sets that are all founders and designers look fake.
+  profession:
+    - accountant
+    - { value: aircraft_mechanic, prompt: aircraft mechanic }
+    - architect
+    - { value: art_teacher, prompt: art teacher }
+    - baker
+    - barista
+    - bartender
+    - { value: bus_driver, prompt: bus driver }
+    - butcher
+    - carpenter
+    - { value: care_worker, prompt: care worker }
+    - chef
+    - { value: civil_engineer, prompt: civil engineer }
+    - cleaner
+    - { value: climate_researcher, prompt: climate researcher }
+    - { value: construction_worker, prompt: construction worker }
+    - { value: customer_support_agent, prompt: customer support agent }
+    - dentist
+    - { value: delivery_driver, prompt: delivery driver }
+    - { value: data_analyst, prompt: data analyst }
+    - electrician
+    - farmer
+    - { value: ferry_captain, prompt: ferry captain }
+    - firefighter
+    - fisherman
+    - florist
+    - { value: forestry_worker, prompt: forestry worker }
+    - { value: graphic_designer, prompt: graphic designer }
+    - hairdresser
+    - { value: hotel_receptionist, prompt: hotel receptionist }
+    - { value: hvac_technician, prompt: HVAC technician }
+    - illustrator
+    - journalist
+    - { value: kindergarten_teacher, prompt: kindergarten teacher }
+    - { value: lab_technician, prompt: laboratory technician }
+    - lawyer
+    - librarian
+    - { value: lighthouse_keeper, prompt: lighthouse keeper, weight: 0.3 }
+    - locksmith
+    - { value: machine_operator, prompt: machine operator }
+    - { value: marine_biologist, prompt: marine biologist }
+    - mechanic
+    - { value: medical_doctor, prompt: medical doctor }
+    - midwife
+    - musician
+    - nurse
+    - { value: nursing_home_cook, prompt: nursing home cook }
+    - optician
+    - painter
+    - paramedic
+    - pharmacist
+    - photographer
+    - { value: physical_therapist, prompt: physical therapist }
+    - pilot
+    - plumber
+    - { value: police_officer, prompt: police officer }
+    - { value: postal_worker, prompt: postal worker }
+    - potter
+    - { value: product_manager, prompt: product manager }
+    - { value: project_manager, prompt: project manager }
+    - { value: railway_engineer, prompt: railway engineer }
+    - { value: real_estate_agent, prompt: real estate agent }
+    - { value: research_scientist, prompt: research scientist }
+    - { value: retail_manager, prompt: retail manager }
+    - { value: sales_representative, prompt: sales representative }
+    - { value: school_principal, prompt: school principal }
+    - { value: security_guard, prompt: security guard }
+    - { value: ships_engineer, prompt: ship's engineer }
+    - { value: social_worker, prompt: social worker }
+    - { value: software_engineer, prompt: software engineer }
+    - { value: sound_engineer, prompt: sound engineer }
+    - { value: sports_coach, prompt: sports coach }
+    - { value: stage_actor, prompt: stage actor }
+    - surveyor
+    - tailor
+    - { value: tattoo_artist, prompt: tattoo artist }
+    - { value: taxi_driver, prompt: taxi driver }
+    - { value: train_conductor, prompt: train conductor }
+    - translator
+    - { value: university_lecturer, prompt: university lecturer }
+    - { value: veterinary_surgeon, prompt: veterinary surgeon }
+    - waiter
+    - welder
+    - winemaker
+    - { value: yoga_instructor, prompt: yoga instructor }
+    - { value: retired, prompt: retired, weight: 0.4 }
+    - { value: student, prompt: student, weight: 0.6 }
+
+  # Colour-neutral on purpose. Hair colour is left to the composer so it stays
+  # consistent with the drawn ancestry instead of producing odd combinations.
+  hair:
+    - { value: short_crop, prompt: short cropped hair, weight: 1.4 }
+    - { value: buzz_cut, prompt: buzz cut, weight: 0.7 }
+    - { value: shaved_head, prompt: shaved head, weight: 0.5 }
+    - { value: side_part, prompt: neat side part, weight: 1.0 }
+    - { value: slicked_back, prompt: slicked back hair, weight: 0.6 }
+    - { value: messy_fringe, prompt: messy hair with a fringe, weight: 0.9 }
+    - { value: shoulder_length_straight, prompt: shoulder-length straight hair, weight: 1.2 }
+    - { value: shoulder_length_wavy, prompt: shoulder-length wavy hair, weight: 1.2 }
+    - { value: long_straight, prompt: long straight hair, weight: 1.0 }
+    - { value: long_curly, prompt: long curly hair, weight: 0.9 }
+    - { value: loose_curls, prompt: loose curls, weight: 1.0 }
+    - { value: tight_coils, prompt: tightly coiled natural hair, weight: 1.0 }
+    - { value: afro, prompt: afro, weight: 0.7 }
+    - { value: braids, prompt: braided hair, weight: 0.7 }
+    - { value: locs, prompt: locs, weight: 0.5 }
+    - { value: bun, prompt: hair tied in a bun, weight: 0.9 }
+    - { value: ponytail, prompt: hair in a ponytail, weight: 0.9 }
+    - { value: undercut, prompt: undercut, weight: 0.4 }
+    - { value: thinning_grey, prompt: thinning grey hair, weight: 0.5 }
+    - { value: silver_short, prompt: short silver hair, weight: 0.5 }
+
+  facial_hair:
+    # Weight 0 means never drawn at random. The `facial_hair.otherwise` rule
+    # assigns it, and its empty prompt keeps "clean-shaven" out of prompts
+    # where the phrase would be odd rather than informative.
+    - { value: not_applicable, prompt: "", weight: 0, label: not applicable }
+    - { value: clean_shaven, prompt: clean-shaven, weight: 3.0 }
+    - { value: light_stubble, prompt: light stubble, weight: 1.6 }
+    - { value: heavy_stubble, prompt: heavy stubble, weight: 0.9 }
+    - { value: short_beard, prompt: neatly trimmed short beard, weight: 1.2 }
+    - { value: full_beard, prompt: full beard, weight: 0.8 }
+    - { value: grey_beard, prompt: grey beard, weight: 0.4 }
+    - { value: moustache, prompt: moustache, weight: 0.3 }
+    - { value: goatee, prompt: goatee, weight: 0.3 }
+
+  glasses:
+    - { value: none, prompt: "", weight: 3.2 }
+    - { value: thin_metal, prompt: thin metal-framed glasses, weight: 0.9 }
+    - { value: thick_acetate, prompt: thick black acetate glasses, weight: 0.7 }
+    - { value: round_frames, prompt: round wire glasses, weight: 0.5 }
+    - { value: rimless, prompt: rimless glasses, weight: 0.5 }
+    - { value: reading_glasses, prompt: reading glasses low on the nose, weight: 0.3 }
+
+  expression:
+    - { value: neutral, prompt: calm neutral expression, weight: 1.6 }
+    - { value: slight_smile, prompt: slight closed-mouth smile, weight: 1.8 }
+    - { value: warm_smile, prompt: warm genuine smile, weight: 1.2 }
+    - { value: confident, prompt: confident relaxed expression, weight: 0.9 }
+    - { value: thoughtful, prompt: thoughtful expression, weight: 0.8 }
+    - { value: serious, prompt: serious expression, weight: 0.7 }
+    - { value: friendly_tired, prompt: friendly but tired expression, weight: 0.4 }
+    - { value: laughing, prompt: laughing, eyes crinkled, weight: 0.3 }
+
+  # `profession_appropriate` is the common case: the composer picks something
+  # that matches the drawn job instead of dressing a welder in a blazer.
+  clothing:
+    - { value: profession_appropriate, prompt: "", weight: 4.0 }
+    - { value: plain_tshirt, prompt: plain t-shirt, weight: 1.0 }
+    - { value: knit_sweater, prompt: knitted sweater, weight: 0.9 }
+    - { value: button_shirt, prompt: button-down shirt, weight: 1.0 }
+    - { value: blazer, prompt: blazer over a plain top, weight: 0.8 }
+    - { value: business_suit, prompt: business suit, weight: 0.5 }
+    - { value: hoodie, prompt: hoodie, weight: 0.6 }
+    - { value: denim_shirt, prompt: denim shirt, weight: 0.6 }
+    - { value: turtleneck, prompt: turtleneck, weight: 0.4 }
+    - { value: work_jacket, prompt: worn work jacket, weight: 0.6 }
+    - { value: high_vis, prompt: high-visibility jacket, weight: 0.3 }
+    - { value: scrubs, prompt: medical scrubs, weight: 0.3 }
+    - { value: apron, prompt: work apron, weight: 0.3 }
+
+  background:
+    - { value: studio_grey, prompt: plain neutral grey studio backdrop, weight: 2.0 }
+    - { value: studio_white, prompt: soft white studio backdrop, weight: 1.4 }
+    - { value: studio_charcoal, prompt: dark charcoal backdrop, weight: 0.9 }
+    - { value: warm_beige, prompt: plain warm beige wall, weight: 0.9 }
+    - { value: blurred_office, prompt: heavily blurred office interior, weight: 1.0 }
+    - { value: blurred_greenery, prompt: heavily blurred green foliage, weight: 0.8 }
+    - { value: blurred_street, prompt: heavily blurred city street, weight: 0.7 }
+    - { value: blurred_workshop, prompt: heavily blurred workshop interior, weight: 0.5 }
+    - { value: window_interior, prompt: blurred interior beside a bright window, weight: 0.8 }
+
+  lighting:
+    - { value: soft_window, prompt: soft natural window light, weight: 2.0 }
+    - { value: overcast, prompt: even overcast daylight, weight: 1.2 }
+    - { value: studio_softbox, prompt: large softbox key light with gentle fill, weight: 1.3 }
+    - { value: rembrandt, prompt: Rembrandt lighting, weight: 0.6 }
+    - { value: golden_hour, prompt: warm golden hour light, weight: 0.7 }
+    - { value: ring_light, prompt: even ring light, weight: 0.4 }
+    - { value: office_fluorescent, prompt: flat office fluorescent light, weight: 0.3 }
+    - { value: dim_warm, prompt: dim warm indoor light, weight: 0.4 }
+
+  camera:
+    - { value: 85mm, prompt: shot on an 85mm f/1.8 lens, weight: 2.0 }
+    - { value: 50mm, prompt: shot on a 50mm f/1.4 lens, weight: 1.2 }
+    - { value: 105mm, prompt: shot on a 105mm f/2.8 lens, weight: 0.8 }
+    - { value: 35mm, prompt: shot on a 35mm f/2 lens, weight: 0.5 }
+
+# ---------------------------------------------------------------------------
+# Conditional rules, applied after sampling.
+# ---------------------------------------------------------------------------
+rules:
+  # Facial hair is only drawn for these values of `sex`; otherwise it is forced.
+  facial_hair:
+    only_if:
+      sex: [male, androgynous]
+    otherwise: not_applicable
+
+  # Grey/silver options only make sense on older faces, and young faces should
+  # rarely get them.
+  hair:
+    discourage_below_age:
+      thinning_grey: 45
+      silver_short: 50
+  facial_hair_age:
+    discourage_below_age:
+      grey_beard: 45
+
+  # Some jobs imply an age floor. Nobody is a school principal at 19.
+  profession:
+    min_age:
+      school_principal: 35
+      university_lecturer: 28
+      medical_doctor: 27
+      dentist: 27
+      lawyer: 26
+      ferry_captain: 30
+      pilot: 25
+      retired: 62
+    max_age:
+      student: 32
+
+# Skin tones that read as plausible for each ancestry. The sampler picks from
+# this subset unless the caller pins `skin_tone` explicitly. This is a rendering
+# heuristic to avoid incoherent prompts, not a claim about any real population.
+skin_tone_affinity:
+  northern_european: [fitzpatrick_i, fitzpatrick_ii, fitzpatrick_iii]
+  southern_european: [fitzpatrick_ii, fitzpatrick_iii, fitzpatrick_iv]
+  eastern_european: [fitzpatrick_i, fitzpatrick_ii, fitzpatrick_iii]
+  west_african: [fitzpatrick_v, fitzpatrick_vi]
+  east_african: [fitzpatrick_v, fitzpatrick_vi]
+  north_african: [fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v]
+  afro_caribbean: [fitzpatrick_iv, fitzpatrick_v, fitzpatrick_vi]
+  african_american: [fitzpatrick_iv, fitzpatrick_v, fitzpatrick_vi]
+  middle_eastern: [fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v]
+  south_asian: [fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v]
+  east_asian: [fitzpatrick_ii, fitzpatrick_iii, fitzpatrick_iv]
+  southeast_asian: [fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v]
+  central_asian: [fitzpatrick_iii, fitzpatrick_iv]
+  latin_american: [fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v]
+  indigenous_american: [fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v]
+  pacific_islander: [fitzpatrick_iv, fitzpatrick_v]
+  mixed_heritage: [fitzpatrick_ii, fitzpatrick_iii, fitzpatrick_iv, fitzpatrick_v, fitzpatrick_vi]

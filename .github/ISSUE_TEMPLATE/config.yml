@@ -1,0 +1,10 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or help with setup
+    url: https://github.com/ekstremedia/profile-photo-generator/discussions/categories/q-a
+    about: |
+      "How do I ...", "is this supposed to ...", CUDA and Ollama setup trouble.
+      Run `ppg doctor` first - it answers most of them.
+  - name: Ideas and show and tell
+    url: https://github.com/ekstremedia/profile-photo-generator/discussions
+    about: Half-formed ideas, and avatars you generated with it.

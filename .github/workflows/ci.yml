@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# A new push to the same branch makes the previous run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # No GPU, no weights, no network. The whole suite runs on a free runner in
+  # seconds because the image backend is a Pillow placeholder.
+  PPG_BACKEND: fake
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: ruff check
+        run: ruff check .
+
+      - name: ruff format
+        # Scoped to the code: ruff also formats Python blocks inside Markdown,
+        # and the snippets in docs/ are deliberately abridged illustrations.
+        run: ruff format --check src tests
+
+      - name: mypy
+        run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install
+        # Only the base dependencies plus the dev tools: torch and diffusers
+        # live in the optional `gpu` extra and are deliberately not installed.
+        run: pip install -e ".[dev]"
+
+      - name: pytest
+        # The suite also pins the backend, composer and data directory in
+        # conftest.py, so it cannot reach a GPU, Ollama or ~/.cache even if this
+        # environment variable is ever dropped.
+        run: pytest -q

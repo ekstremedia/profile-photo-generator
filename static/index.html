@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Profile Photo Generator</title>
+  <meta name="description" content="Generate photorealistic synthetic profile photos locally.">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🙂</text></svg>">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot" id="status-dot" title="checking..."></span>
+      <h1>Profile Photo Generator</h1>
+    </div>
+    <div class="meta" id="server-meta">connecting…</div>
+  </header>
+
+  <main>
+    <aside class="panel">
+      <form id="generator">
+        <fieldset>
+          <legend>Who</legend>
+          <div class="grid-2" id="axes-primary"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Age</legend>
+          <div class="row">
+            <input type="range" id="age" name="age" min="18" max="90" value="34" disabled>
+            <output id="age-out">any</output>
+          </div>
+          <label class="check">
+            <input type="checkbox" id="age-enabled"> Pin an exact age
+          </label>
+        </fieldset>
+
+        <fieldset>
+          <legend>Look</legend>
+          <div class="grid-2" id="axes-secondary"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Options</legend>
+          <label>
+            <span>Seed key</span>
+            <input type="text" id="seed" name="seed" placeholder="blank = random"
+                   autocomplete="off" spellcheck="false">
+            <small>Any text. The same key always makes the same face.</small>
+          </label>
+          <label>
+            <span>Extra prompt detail</span>
+            <input type="text" id="prompt_extra" name="prompt_extra"
+                   placeholder="e.g. wearing a red scarf" autocomplete="off">
+          </label>
+          <label class="check">
+            <input type="checkbox" id="fast"> Fast mode (fewer steps)
+          </label>
+        </fieldset>
+
+        <div class="actions">
+          <button type="submit" class="primary" id="go">Generate</button>
+          <button type="button" id="randomise">Randomise all</button>
+        </div>
+        <div class="actions">
+          <label class="inline">
+            <span>Batch</span>
+            <input type="number" id="batch-n" value="12" min="1" max="100">
+          </label>
+          <button type="button" id="batch">Generate batch</button>
+        </div>
+        <p class="hint" id="hint"></p>
+      </form>
+    </aside>
+
+    <section class="results">
+      <div class="results-head">
+        <h2>Gallery</h2>
+        <button type="button" id="refresh" class="ghost">Refresh</button>
+      </div>
+      <div class="grid" id="gallery"></div>
+      <p class="empty" id="empty">Nothing generated yet. Hit <strong>Generate</strong>.</p>
+    </section>
+  </main>
+
+  <dialog id="detail">
+    <button class="close" id="detail-close" aria-label="Close">×</button>
+    <div class="detail-body">
+      <img id="detail-img" alt="Generated avatar">
+      <div class="detail-info">
+        <h3 id="detail-name">—</h3>
+        <p id="detail-sub" class="dim"></p>
+        <dl id="detail-attrs"></dl>
+        <h4>Prompt</h4>
+        <pre id="detail-prompt"></pre>
+        <div class="detail-actions">
+          <button type="button" id="copy-url">Copy image URL</button>
+          <button type="button" id="reroll">Re-roll these traits</button>
+        </div>
+      </div>
+    </div>
+  </dialog>
+
+  <footer>
+    <p>
+      Every face here is synthetic and depicts no real person. Files carry
+      metadata saying so.
+      <a href="/docs">API docs</a> ·
+      <a href="https://github.com/ekstremedia/profile-photo-generator">Source</a>
+    </p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

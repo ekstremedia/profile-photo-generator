@@ -1,0 +1,84 @@
+name: Bug report
+description: Something does not work the way it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a report. The `ppg doctor` output below is the single
+        most useful thing you can give us - it checks the GPU, the model cache,
+        Ollama, the database and the data directory, and it usually says which
+        one is unhappy.
+
+  - type: textarea
+    id: doctor
+    attributes:
+      label: Output of `ppg doctor`
+      description: |
+        Run `ppg doctor` (or `docker compose exec ppg ppg doctor`) and paste the
+        whole table. Redact anything private - paths and model names are fine.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Include the error message and any traceback in full.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected to happen
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: The exact command or request
+      description: |
+        The CLI command, the `curl` invocation, or the HTTP request body that
+        triggers it. A request that fails every time is much easier to fix than
+        one that fails sometimes.
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`ppg --version`, or the image tag / commit you are running."
+      placeholder: "0.1.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install
+    attributes:
+      label: How are you running it?
+      options:
+        - Docker / docker compose
+        - pip install -e . on the host
+        - Something else (say so below)
+    validations:
+      required: true
+
+  - type: input
+    id: hardware
+    attributes:
+      label: GPU and VRAM
+      description: Or "CPU only". Most generation problems are VRAM problems.
+      placeholder: "RTX 3060, 12GB"
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration
+      description: |
+        Any `PPG_*` settings you changed from the defaults. Do not paste API keys.
+      render: shell

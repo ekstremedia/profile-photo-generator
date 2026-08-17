@@ -1,0 +1,187 @@
+# Profile Photo Generator - Docker Compose
+#
+# Default, no profile: one GPU-backed API container that talks to an Ollama
+# running natively on the host.
+#
+#   cp .env.example .env
+#   docker compose up -d          # http://localhost:8000
+#
+# The GPU reservation below requires nvidia-container-toolkit on the host. If
+# `docker info | grep -i nvidia` prints nothing, run scripts/setup-host.sh.
+#
+# Alternatives, each documented at its own service:
+#   --profile cpu     no NVIDIA GPU available
+#   --profile ollama  no Ollama on the host either
+#   --profile dev     live reload against the working tree
+
+# ---------------------------------------------------------------------------
+# Shared fragments. Everything below re-uses these rather than restating the
+# api service four times.
+# ---------------------------------------------------------------------------
+
+x-ppg-env: &ppg-env
+  # .env is written for running on the host, and a few of its values are simply
+  # wrong inside a container. `environment:` takes precedence over `env_file:`,
+  # so they are corrected here instead of asking users to maintain two copies
+  # of .env:
+  #
+  #   PPG_DATA_DIR  ./data on the host resolves to /app/data in the container,
+  #                 which is not where the volume is mounted.
+  #   HF_HOME       empty in .env.example, which would send 7GB of weights to
+  #                 ~/.cache/huggingface inside a throwaway container.
+  #   PPG_PORT      the container always listens on 8000; only the host-side
+  #                 port is variable, see `ports:` below.
+  PPG_DATA_DIR: /data
+  HF_HOME: /data/hf-cache
+  PPG_HOST: 0.0.0.0
+  PPG_PORT: "8000"
+  # The host's Ollama, reached through the gateway address added by
+  # extra_hosts. Users of the `ollama` profile point this at the container
+  # instead by setting PPG_COMPOSE_OLLAMA_URL=http://ollama:11434 in .env.
+  PPG_OLLAMA_BASE_URL: ${PPG_COMPOSE_OLLAMA_URL:-http://host.docker.internal:11434}
+
+x-ppg-service: &ppg-service
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+  image: ppg:local
+  env_file: .env
+  environment: *ppg-env
+  volumes:
+    # A bind mount, not a named volume. The weights (~7GB), the SQLite index
+    # and every generated image live here, and all three need to be readable,
+    # backup-able and deletable from the host without going through docker cp.
+    - ./data:/data
+  extra_hosts:
+    # Linux does not define host.docker.internal by default; without this the
+    # container has no way to reach a service bound to the host's loopback.
+    - "host.docker.internal:host-gateway"
+  restart: unless-stopped
+  # Unloading a model and finishing an in-flight image both take a moment; the
+  # 10s default would SIGKILL through it.
+  stop_grace_period: 30s
+
+x-gpu: &gpu
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+
+services:
+  # --- default -------------------------------------------------------------
+  # The one you want on a machine with an NVIDIA GPU and Ollama on the host.
+  api:
+    <<: [*ppg-service, *gpu]
+    ports:
+      - "${PPG_PORT:-8000}:8000"
+
+  # --- profile: cpu --------------------------------------------------------
+  # For a machine with no NVIDIA GPU, or before nvidia-container-toolkit is
+  # installed. Same image, no device reservation. Expect minutes per image
+  # rather than seconds - if you only want to exercise the API, PPG_BACKEND=fake
+  # is the faster answer.
+  #
+  #   docker compose --profile cpu up api-cpu
+  #
+  # It publishes the same host port as `api`, so stop that one first.
+  api-cpu:
+    <<: *ppg-service
+    profiles: ["cpu"]
+    environment:
+      <<: *ppg-env
+      PPG_DEVICE: cpu
+    ports:
+      - "${PPG_PORT:-8000}:8000"
+
+  # --- profile: ollama -----------------------------------------------------
+  # Only needed when Ollama is NOT already running on the host. Ollama is
+  # optional for this project: without it prompts come from templates and
+  # everything still works, the wording is just less varied.
+  #
+  #   echo 'PPG_COMPOSE_OLLAMA_URL=http://ollama:11434' >> .env
+  #   docker compose --profile ollama up -d
+  #
+  # No GPU reservation on purpose: a 3B prompt model is quick enough on CPU,
+  # and on a 12GB card it would otherwise park several GB of VRAM next to SDXL,
+  # which is the most common cause of CUDA out-of-memory in this project.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    volumes:
+      - ollama-models:/root/.ollama
+    # Deliberately not published to the host: only the api container needs it,
+    # and an unauthenticated Ollama on 0.0.0.0 is not something to hand out.
+    expose:
+      - "11434"
+    restart: unless-stopped
+    healthcheck:
+      # `ollama list` is the cheapest command that requires a live server, and
+      # the image ships neither curl nor wget to probe the HTTP endpoint with.
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+
+  # One-shot companion to the above: pulls the prompt model, then exits and
+  # stays exited. Without it the first request would find a server with no
+  # models and fall back to templates.
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      # Points the CLI at the server container rather than having it start a
+      # second server of its own.
+      OLLAMA_HOST: http://ollama:11434
+    entrypoint: ["/bin/ollama"]
+    command: ["pull", "llama3.2:3b"]
+    restart: "no"
+
+  # --- profile: dev --------------------------------------------------------
+  # Live reload against the working tree. /app/src comes first on PYTHONPATH in
+  # the image, so the bind mount below is what actually gets imported.
+  #
+  #   docker compose --profile dev up api-dev
+  #
+  # Same host port as `api` again, so run one or the other.
+  api-dev:
+    <<: [*ppg-service, *gpu]
+    profiles: ["dev"]
+    volumes:
+      - ./data:/data
+      - ./src:/app/src
+      - ./static:/app/static
+    environment:
+      <<: *ppg-env
+      # Surfaces a missing GPU, missing weights or an unreachable Ollama at
+      # start rather than on the first request.
+      PPG_DOCTOR_ON_START: "1"
+    ports:
+      - "${PPG_PORT:-8000}:8000"
+    # Replaces the entrypoint's uvicorn line; the banner and the weights check
+    # still run first. --reload-dir keeps the watcher off /data, where a batch
+    # run writes thousands of files.
+    command:
+      - uvicorn
+      - ppg.api.app:app
+      - --host
+      - "0.0.0.0"
+      - --port
+      - "8000"
+      - --reload
+      - --reload-dir
+      - /app/src
+    # A crash while editing should stay crashed, with the traceback as the last
+    # thing on screen.
+    restart: "no"
+
+volumes:
+  # Ollama's model blobs. A named volume rather than a bind mount because these
+  # are managed entirely by Ollama and nothing on the host needs to read them.
+  ollama-models:
