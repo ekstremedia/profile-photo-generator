@@ -437,9 +437,14 @@ async def build_composer_auto(settings: Settings) -> tuple[PromptComposer, str |
 
     if model is None:
         if settings.composer == "llm":
-            logger.error(
-                "PPG_COMPOSER=llm but no Ollama model is available at %s",
-                settings.ollama_base_url,
+            # `llm` is the explicit opt-in that says "I want the LLM, not the
+            # fallback". Quietly serving template prompts instead would hide
+            # a broken deployment behind output that looks fine.
+            raise OllamaError(
+                f"PPG_COMPOSER=llm requires a usable Ollama model, but none is "
+                f"available at {settings.ollama_base_url}. Start Ollama and pull a "
+                f"model (`ollama pull llama3.2:3b`), or set PPG_COMPOSER=auto to "
+                f"fall back to template prompts."
             )
         else:
             logger.info(

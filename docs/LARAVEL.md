@@ -115,10 +115,22 @@ class AvatarClient
         );
     }
 
-    /** The stable key for a user. Lowercased so casing never forks the avatar. */
+    /**
+     * The stable key for a user.
+     *
+     * A keyed hash, not a bare md5 of the address. The key travels in an image
+     * URL, through access logs and into browser history, and an unsalted hash
+     * of a common email address is reversible in seconds - it is the address,
+     * with extra steps. HMAC with the application key keeps it opaque to
+     * anyone who sees the URL while staying stable for the user.
+     *
+     * Lowercased and trimmed first so casing never forks the avatar. If you
+     * ever rotate APP_KEY, every avatar changes; a random per-user column is
+     * the alternative if that matters.
+     */
     public function keyFor(string $email): string
     {
-        return md5(mb_strtolower(trim($email)));
+        return hash_hmac('sha256', mb_strtolower(trim($email)), config('app.key'));
     }
 
     /** Raw image bytes, for storing a copy locally or proxying. */
@@ -138,13 +150,14 @@ class AvatarClient
             ->connectTimeout(5)
             ->timeout(config('ppg.timeout'))
             ->acceptJson()
-            // Retry connection failures and the "still rendering" 503, but not
-            // a 422 refusal - that will fail identically every time.
+            // Retry only the statuses that mean "not started, try again", and
+            // only where a retry is safe. Deliberately NOT ConnectionException:
+            // a connection that dies mid-POST may well have been received, and
+            // an unseeded /v1/avatars call is not idempotent - retrying it
+            // generates a second, different face and bills you the GPU time
+            // twice. Seeded requests are content-addressed and safe to repeat;
+            // if you want retries on connection errors, send a `seed`.
             ->retry(3, 2000, function (\Throwable $e) {
-                if ($e instanceof ConnectionException) {
-                    return true;
-                }
-
                 return $e instanceof RequestException
                     && in_array($e->response->status(), [429, 502, 503, 504], true);
             }, throw: false)
@@ -192,9 +205,12 @@ If the generator is reachable from the browser (a private network, or behind
 your own reverse proxy) this is the whole integration:
 
 ```blade
-<img src="{{ config('ppg.url') }}/v1/avatars/by-seed/{{ md5(Str::lower($user->email)) }}?size=96"
+<img src="{{ config('ppg.url') }}/v1/avatars/by-seed/{{ app(App\Services\AvatarClient::class)->keyFor($user->email) }}?size=96"
      width="48" height="48" alt="" loading="lazy" class="rounded-full">
 ```
+
+Route it through `keyFor()` rather than hashing inline: a bare `md5($email)` in
+the URL is an email address anyone can recover from a log line.
 
 The first request renders the face and blocks; every later request is a static
 file read served with `Cache-Control: immutable`.

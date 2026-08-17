@@ -9,6 +9,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Attribute axes bypassed the content filter.** Only `prompt_extra` was
+  checked, but every attribute accepts free text on purpose, so
+  `profession="nude celebrity lookalike"` went straight into the prompt. All
+  caller-supplied attribute values are now filtered and length-limited.
+- **Hyphens and underscores defeated the blocklist.** The tokeniser treated `-`
+  as a word character, so `porn star` was rejected and `porn-star` was not.
+  Separators are now normalised before matching, and multi-word phrases match
+  in either spelling.
+- **Avatar ids were used as filesystem paths unvalidated.**
+  `avatar_dir(out, "../../../etc")` returned `/../../../etc`, and one caller
+  passes that to `shutil.rmtree`. Ids are now validated as hex digests where
+  they become paths, so the guarantee does not depend on every caller checking.
+- **Compose published the API on every interface.** The default deployment has
+  no API key and permissive CORS, so `docker compose up -d` put an
+  unauthenticated GPU workload on the network. It now binds
+  `${PPG_BIND_ADDRESS:-127.0.0.1}`, with the opt-in documented.
+- Guidance to key avatars on `md5(email)` is replaced with an opaque per-user
+  value or an HMAC. The key appears in URLs, logs and browser history, and an
+  unsalted hash of a common address is reversible.
+
 ### Fixed
 
 - **Requested attributes were being silently discarded.** Prompts are now
@@ -27,6 +49,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   as likely to summon glasses as to prevent them. Vocabulary options can now
   carry a `negative` field, used by `glasses: none` and the clean-shaven
   facial-hair values.
+- `PPG_COMPOSER=llm` now fails at startup when no Ollama model is available,
+  instead of silently serving template prompts - the explicit setting exists
+  precisely to say "do not fall back".
+- `PPG_AUTO_DOWNLOAD=1` fetches the configured `PPG_MODEL_ID` and `PPG_VAE_ID`
+  rather than the project defaults, so changing the checkpoint no longer leaves
+  the readiness check failing forever.
+- The `openai_images` backend no longer blocks the event loop fetching an image
+  from a returned URL.
+- Gallery cards are real buttons, so they are reachable and activatable from
+  the keyboard; the age slider has an accessible name.
 - **Reverted the two-text-encoder prompt split.** Routing the subject to
   encoder 1 and photographic style to encoder 2 appeared to double the token
   budget, but SDXL's pooled conditioning comes from the second encoder alone,

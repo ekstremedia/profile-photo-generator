@@ -46,7 +46,7 @@ separate.
 text + composer mode) keeps the exact wording a seed first produced. An LLM is
 not reproducible: ask the same model the same question twice and the phrasing
 drifts, even with a fixed seed, if the model or its quantisation changes. Since
-`by-seed/{md5(email)}` promises the same face forever, the wording that
+`by-seed/{key}` promises the same face forever, the wording that
 produced that face has to be pinned. Cached prompts also mean a repeat request
 never pays the Ollama round trip.
 

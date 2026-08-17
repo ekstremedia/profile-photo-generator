@@ -82,7 +82,11 @@ services:
   api:
     <<: [*ppg-service, *gpu]
     ports:
-      - "${PPG_PORT:-8000}:8000"
+      # Loopback by default. The service ships with no API key and permissive
+      # CORS, so publishing on every interface would put an unauthenticated
+      # GPU workload on the network the moment someone runs `up -d`. Set
+      # PPG_BIND_ADDRESS=0.0.0.0 to expose it - and set PPG_API_KEY first.
+      - "${PPG_BIND_ADDRESS:-127.0.0.1}:${PPG_PORT:-8000}:8000"
 
   # --- profile: cpu --------------------------------------------------------
   # For a machine with no NVIDIA GPU, or before nvidia-container-toolkit is
@@ -100,7 +104,11 @@ services:
       <<: *ppg-env
       PPG_DEVICE: cpu
     ports:
-      - "${PPG_PORT:-8000}:8000"
+      # Loopback by default. The service ships with no API key and permissive
+      # CORS, so publishing on every interface would put an unauthenticated
+      # GPU workload on the network the moment someone runs `up -d`. Set
+      # PPG_BIND_ADDRESS=0.0.0.0 to expose it - and set PPG_API_KEY first.
+      - "${PPG_BIND_ADDRESS:-127.0.0.1}:${PPG_PORT:-8000}:8000"
 
   # --- profile: ollama -----------------------------------------------------
   # Only needed when Ollama is NOT already running on the host. Ollama is
@@ -169,7 +177,11 @@ services:
       # start rather than on the first request.
       PPG_DOCTOR_ON_START: "1"
     ports:
-      - "${PPG_PORT:-8000}:8000"
+      # Loopback by default. The service ships with no API key and permissive
+      # CORS, so publishing on every interface would put an unauthenticated
+      # GPU workload on the network the moment someone runs `up -d`. Set
+      # PPG_BIND_ADDRESS=0.0.0.0 to expose it - and set PPG_API_KEY first.
+      - "${PPG_BIND_ADDRESS:-127.0.0.1}:${PPG_PORT:-8000}:8000"
     # Replaces the entrypoint's uvicorn line; the banner and the weights check
     # still run first. --reload-dir keeps the watcher off /data, where a batch
     # run writes thousands of files.

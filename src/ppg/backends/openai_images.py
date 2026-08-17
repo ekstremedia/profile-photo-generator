@@ -74,7 +74,7 @@ class OpenAIImagesBackend:
             headers["Authorization"] = f"Bearer {self.settings.openai_api_key}"
 
         payload = await self._post(body, headers)
-        return self._decode(payload)
+        return await self._decode(payload)
 
     async def _post(self, body: dict[str, Any], headers: dict[str, str]) -> dict[str, Any]:
         try:
@@ -97,7 +97,7 @@ class OpenAIImagesBackend:
             raise BackendError(f"Image endpoint returned a non-JSON body: {exc}") from exc
 
     @staticmethod
-    def _decode(payload: dict[str, Any]) -> Image.Image:
+    async def _decode(payload: dict[str, Any]) -> Image.Image:
         items = payload.get("data") or []
         if not items:
             raise BackendError(f"Image endpoint returned no images: {str(payload)[:200]}")
@@ -111,10 +111,14 @@ class OpenAIImagesBackend:
             return Image.open(io.BytesIO(raw)).convert("RGB")
 
         if url := item.get("url"):
+            # Async, not httpx.get: this runs on the event loop, and a
+            # synchronous fetch of a multi-megabyte PNG would stall every other
+            # request in the process for its duration.
             try:
-                response = httpx.get(url, timeout=120.0)
-                response.raise_for_status()
-            except httpx.HTTPError as exc:
+                async with httpx.AsyncClient(timeout=120.0) as client:
+                    response = await client.get(url)
+                    response.raise_for_status()
+            except (httpx.HTTPError, OSError) as exc:
                 raise BackendError(
                     f"Could not fetch the generated image from {url}: {exc}"
                 ) from exc

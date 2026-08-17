@@ -74,10 +74,24 @@ def main() -> int:
         "--cache-dir",
         help="Where to store weights. Defaults to $HF_HOME, else ./data/hf-cache",
     )
+    # The service loads whatever PPG_MODEL_ID / PPG_VAE_ID say, so the
+    # downloader has to be able to follow. Without these, an operator who
+    # changed the checkpoint got a cache full of the default weights and a
+    # 7GB surprise download on the first request.
+    parser.add_argument(
+        "--model-id",
+        default=os.environ.get("PPG_MODEL_ID"),
+        help="Checkpoint repo id. Defaults to $PPG_MODEL_ID, then the project default.",
+    )
+    parser.add_argument(
+        "--vae-id",
+        default=os.environ.get("PPG_VAE_ID"),
+        help="VAE repo id. Defaults to $PPG_VAE_ID, then the project default.",
+    )
     parser.add_argument(
         "--model",
         action="append",
-        help="Extra repo id to fetch in full (e.g. a different checkpoint). Repeatable.",
+        help="Extra repo id to fetch in full (e.g. a LoRA). Repeatable.",
     )
     parser.add_argument("--dry-run", action="store_true", help="Show what would be downloaded.")
     args = parser.parse_args()
@@ -107,7 +121,15 @@ def main() -> int:
     else:
         os.environ.setdefault("HF_HUB_ENABLE_HF_TRANSFER", "1")
 
-    targets = list(DEFAULT_MODELS)
+    checkpoint, vae = DEFAULT_MODELS
+    if args.model_id and args.model_id != checkpoint[0]:
+        # Patterns are kept: a different SDXL checkpoint has the same layout,
+        # and the fp32 duplicates are just as much of a waste there.
+        checkpoint = (args.model_id, checkpoint[1], 0.0, "checkpoint (configured)")
+    if args.vae_id and args.vae_id != vae[0]:
+        vae = (args.vae_id, vae[1], 0.0, "VAE (configured)")
+
+    targets = [checkpoint, vae]
     for extra in args.model or []:
         targets.append((extra, ["*"], 0.0, "user requested"))
 

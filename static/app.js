@@ -114,9 +114,19 @@ function applyAttributes(attributes) {
 /* ---------------------------------------------------------------- gallery */
 
 function card(avatar) {
-  const element = document.createElement('div');
+  // A button, not a div: the card opens a dialog, so it has to be reachable
+  // and activatable from the keyboard. Using the real element gets focus,
+  // Enter and Space for free rather than reimplementing them.
+  const element = document.createElement('button');
+  element.type = 'button';
   element.className = 'card';
   element.dataset.id = avatar.id;
+  element.setAttribute(
+    'aria-label',
+    avatar.persona
+      ? `Details for ${avatar.persona.name}, ${avatar.persona.age}`
+      : 'Avatar details',
+  );
 
   const img = document.createElement('img');
   img.src = `/v1/avatars/${avatar.id}/image?size=256`;
@@ -129,21 +139,24 @@ function card(avatar) {
     ? `${avatar.persona.name}, ${avatar.persona.age}`
     : `${avatar.attributes.age} · ${avatar.attributes.sex}`;
 
+  // Nested inside a button would be invalid HTML, so the delete control is a
+  // sibling and the pair share a wrapper.
   const del = document.createElement('button');
   del.className = 'del';
   del.type = 'button';
   del.textContent = '×';
   del.title = 'Delete this avatar';
   del.setAttribute('aria-label', 'Delete this avatar');
-  del.addEventListener('click', (event) => {
-    // Without this the click also opens the detail dialog behind the removal.
-    event.stopPropagation();
-    deleteAvatar(avatar.id, element);
-  });
+  del.addEventListener('click', () => deleteAvatar(avatar.id, wrapper));
 
-  element.append(img, caption, del);
+  element.append(img, caption);
   element.addEventListener('click', () => openDetail(avatar));
-  return element;
+
+  const wrapper = document.createElement('div');
+  wrapper.className = 'card-wrap';
+  wrapper.dataset.id = avatar.id;
+  wrapper.append(element, del);
+  return wrapper;
 }
 
 async function deleteAvatar(id, element) {
@@ -257,7 +270,7 @@ function openDetail(avatar) {
   del.replaceWith(fresh);
   armable(fresh, 'Delete', () => 'Really delete?', async () => {
     $('detail').close();
-    await deleteAvatar(avatar.id, document.querySelector(`.card[data-id="${avatar.id}"]`));
+    await deleteAvatar(avatar.id, document.querySelector(`.card-wrap[data-id="${avatar.id}"]`));
   });
 
   $('detail').showModal();

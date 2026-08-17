@@ -171,7 +171,7 @@ button.danger.armed { background: var(--bad); border-color: var(--bad); color: #
 
 /* Per-card delete. Hidden until hover so the grid stays calm, but always
    focusable so it is reachable from the keyboard. */
-.card .del {
+.card-wrap .del {
   position: absolute;
   top: .35rem; right: .35rem;
   width: 22px; height: 22px;
@@ -181,8 +181,20 @@ button.danger.armed { background: var(--bad); border-color: var(--bad); color: #
   color: #fff; font-size: .95rem;
   opacity: 0; transition: opacity .15s, background .15s;
 }
-.card:hover .del, .card .del:focus-visible { opacity: 1; }
-.card .del:hover { background: var(--bad); }
+.card-wrap:hover .del,
+.card-wrap .del:focus-visible { opacity: 1; }
+.card-wrap .del:hover { background: var(--bad); }
+
+/* Visible to screen readers only. */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
 
 .grid {
   display: grid;
@@ -190,17 +202,28 @@ button.danger.armed { background: var(--bad); border-color: var(--bad); color: #
   gap: .75rem;
 }
 
+/* The card itself is a <button> so it is keyboard operable; the delete control
+   is a sibling rather than a child, because a button inside a button is
+   invalid HTML and browsers disagree about what to do with it. */
+.card-wrap { position: relative; aspect-ratio: 1; }
+
 .card {
   position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  font: inherit;
+  color: inherit;
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
   background: var(--panel);
   cursor: pointer;
-  aspect-ratio: 1;
   transition: transform .12s, box-shadow .12s;
 }
 .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 .card .cap {
@@ -218,6 +241,8 @@ button.danger.armed { background: var(--bad); border-color: var(--bad); color: #
 .card.pending {
   display: grid;
   place-items: center;
+  /* Placeholders are bare divs, not wrapped buttons, so they need their own. */
+  aspect-ratio: 1;
   color: var(--dim);
   font-size: .8rem;
   background: repeating-linear-gradient(45deg, var(--panel), var(--panel) 10px, var(--bg) 10px, var(--bg) 20px);
@@ -251,7 +276,7 @@ dd { margin: 0; }
 
 pre {
   white-space: pre-wrap;
-  word-break: break-word;
+  overflow-wrap: anywhere;
   background: var(--bg);
   border: 1px solid var(--line);
   border-radius: 7px;

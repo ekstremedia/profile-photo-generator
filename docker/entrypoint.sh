@@ -16,8 +16,9 @@ PPG_BACKEND="${PPG_BACKEND:-diffusers}"
 PPG_DEVICE="${PPG_DEVICE:-auto}"
 PPG_DATA_DIR="${PPG_DATA_DIR:-/data}"
 PPG_MODEL_ID="${PPG_MODEL_ID:-SG161222/RealVisXL_V5.0}"
+PPG_VAE_ID="${PPG_VAE_ID:-madebyollin/sdxl-vae-fp16-fix}"
 HF_HOME="${HF_HOME:-${PPG_DATA_DIR}/hf-cache}"
-export PPG_HOST PPG_PORT PPG_BACKEND PPG_DEVICE PPG_DATA_DIR PPG_MODEL_ID HF_HOME
+export PPG_HOST PPG_PORT PPG_BACKEND PPG_DEVICE PPG_DATA_DIR PPG_MODEL_ID PPG_VAE_ID HF_HOME
 
 log() {
     printf '[ppg] %s\n' "$*"
@@ -58,7 +59,12 @@ if [ "${PPG_BACKEND}" = "diffusers" ] && ! weights_present; then
         # Not fatal: exiting here under `restart: unless-stopped` would produce a
         # crash loop that re-attempts a 7GB download and buries the real cause.
         # The server starts regardless and reports the backend error on /readyz.
-        if ! python /app/scripts/download-models.py; then
+        # Pass the configured ids through: weights_present checks
+        # PPG_MODEL_ID, so downloading anything else would leave the check
+        # failing forever and the real model absent.
+        if ! python /app/scripts/download-models.py \
+            --model-id "${PPG_MODEL_ID}" \
+            --vae-id "${PPG_VAE_ID}"; then
             log "download failed - starting anyway, see /readyz for the backend error"
         fi
     else

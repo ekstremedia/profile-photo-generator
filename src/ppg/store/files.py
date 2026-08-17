@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -39,7 +40,26 @@ def compute_hash(payload: dict[str, Any]) -> str:
     return hashlib.blake2b(canonical.encode("utf-8"), digest_size=HASH_BYTES).hexdigest()
 
 
+# Avatar ids are blake2b hex digests and nothing else. Validated here, at the
+# point where an id becomes a filesystem path, rather than trusting every
+# caller to have checked: `avatar_dir(out, "../../../etc")` used to produce
+# "/../../../etc", and one of this module's callers hands that straight to
+# shutil.rmtree.
+_DIGEST_RE = re.compile(r"^[0-9a-f]{8,64}$")
+
+
+class InvalidDigest(ValueError):
+    """The supplied avatar id is not a hex digest."""
+
+
+def validate_digest(digest: str) -> str:
+    if not _DIGEST_RE.fullmatch(digest):
+        raise InvalidDigest(f"Not a valid avatar id: {digest!r}")
+    return digest
+
+
 def avatar_dir(outputs_dir: Path, digest: str) -> Path:
+    validate_digest(digest)
     return outputs_dir / digest[:2] / digest[2:4] / digest
 
 
@@ -54,7 +74,10 @@ def has_variants(outputs_dir: Path, digest: str, sizes: list[int]) -> bool:
     disagree if someone clears ``data/outputs`` without clearing the database,
     and serving a 404 for a row that claims to exist is a confusing failure.
     """
-    directory = avatar_dir(outputs_dir, digest)
+    try:
+        directory = avatar_dir(outputs_dir, digest)
+    except InvalidDigest:
+        return False
     if not directory.is_dir():
         return False
     return all((directory / f"{size}.{fmt}").is_file() for size in sizes for fmt in ("webp", "png"))

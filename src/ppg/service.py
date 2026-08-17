@@ -29,10 +29,10 @@ from ppg.attributes.sampler import Attributes, Sampler, normalise_seed
 from ppg.backends.base import ImageBackend, RenderSpec
 from ppg.config import Settings
 from ppg.prompt.composer import ComposeResult, PromptComposer
-from ppg.safety import SafetyError, check_free_text, clamp_age, minor_mode
+from ppg.safety import SafetyError, check_attributes, check_free_text, clamp_age, minor_mode
 from ppg.schemas import AvatarRequest, AvatarResult, BatchRequest, Persona
 from ppg.store.db import Database
-from ppg.store.files import avatar_dir, compute_hash, has_variants
+from ppg.store.files import InvalidDigest, avatar_dir, compute_hash, has_variants
 from ppg.store.imaging import build_metadata, write_variants
 
 logger = logging.getLogger(__name__)
@@ -132,6 +132,9 @@ class AvatarService:
         failed job.
         """
         check_free_text(request.prompt_extra, field="prompt_extra")
+        # Every attribute axis accepts free text, so every one of them is a
+        # route into the prompt and has to be filtered too.
+        check_attributes(request.pinned_attributes())
         clamp_age(request.age, self.settings)
         largest = max(self.settings.sizes)
         if request.size is not None and not 16 <= request.size <= largest:
@@ -303,9 +306,13 @@ class AvatarService:
 
     def delete(self, avatar_id: str) -> bool:
         """Remove one avatar and its files."""
+        try:
+            target = avatar_dir(self.settings.outputs_dir, avatar_id)
+        except InvalidDigest:
+            return False
         if not self.db.delete_avatar(avatar_id):
             return False
-        shutil.rmtree(avatar_dir(self.settings.outputs_dir, avatar_id), ignore_errors=True)
+        shutil.rmtree(target, ignore_errors=True)
         return True
 
     def clear_all(self) -> int:

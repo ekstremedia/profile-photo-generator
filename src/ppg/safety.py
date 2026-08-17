@@ -138,21 +138,32 @@ _REAL_PERSON_MARKERS = {
     "instagram star",
 }
 
-_WORD_RE = re.compile(r"[a-z0-9'-]+")
+# Hyphens and underscores are separators, not word characters. Treating them
+# as part of a word let "porn-star" through while "porn star" was blocked,
+# which is not a filter so much as a spelling test.
+_WORD_RE = re.compile(r"[a-z0-9']+")
+_SEPARATORS = re.compile(r"[-_/.]+")
+
+
+def _normalise(text: str) -> str:
+    return _SEPARATORS.sub(" ", text.lower())
 
 
 def _tokens(text: str) -> set[str]:
-    return set(_WORD_RE.findall(text.lower()))
+    return set(_WORD_RE.findall(_normalise(text)))
 
 
 def _matched(text: str, phrases: set[str]) -> list[str]:
     """Find blocked entries, matching multi-word phrases as substrings."""
     lowered = text.lower()
-    words = _tokens(lowered)
+    normalised = _normalise(text)
+    words = _tokens(text)
     hits = []
     for phrase in phrases:
         if " " in phrase or "-" in phrase:
-            if phrase in lowered:
+            # Check both spellings so "look-alike" and "look alike" both match
+            # regardless of which form the blocklist happens to use.
+            if phrase in lowered or _normalise(phrase) in normalised:
                 hits.append(phrase)
         elif phrase in words:
             hits.append(phrase)
@@ -187,6 +198,31 @@ def check_free_text(text: str | None, *, field: str = "prompt_extra") -> str:
             f"Blocked term(s): {', '.join(hits)}."
         )
     return cleaned
+
+
+# Attribute values are short by nature ("marine biologist", "tight coils").
+# A long one is either a mistake or an attempt to smuggle a prompt through an
+# axis that looks like a dropdown.
+MAX_ATTRIBUTE_LENGTH = 80
+
+
+def check_attributes(attributes: dict[str, str]) -> None:
+    """Apply the free-text rules to caller-supplied attribute values.
+
+    Every axis accepts free text on purpose - asking for a "puffin researcher"
+    should work even though the vocabulary has never heard of one. That makes
+    each axis another way into the prompt, so each one has to be filtered like
+    any other free text. Without this, ``prompt_extra`` was guarded and
+    ``profession`` was wide open, which is the same hole with a longer name.
+    """
+    for axis, value in attributes.items():
+        if len(value) > MAX_ATTRIBUTE_LENGTH:
+            raise SafetyError(
+                f"{axis} is too long ({len(value)} characters, max "
+                f"{MAX_ATTRIBUTE_LENGTH}). Attribute values are short phrases; "
+                "use prompt_extra for longer detail."
+            )
+        check_free_text(value, field=axis)
 
 
 def clamp_age(age: int | None, settings: Settings) -> int | None:

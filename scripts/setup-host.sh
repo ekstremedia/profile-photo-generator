@@ -176,9 +176,17 @@ if docker info 2> /dev/null | grep -qi nvidia; then
 fi
 
 install_toolkit() {
-    if ! command -v curl > /dev/null 2>&1; then
-        warn "curl is not installed; cannot fetch the repository definition."
-        info "  apt-get install -y curl gnupg   then re-run this script."
+    # Both tools are checked up front. gpg is not used until several steps
+    # later, and discovering it is missing after the user has approved the
+    # change and typed a sudo password leaves the keyring directory created
+    # and nothing else done.
+    local missing=()
+    command -v curl > /dev/null 2>&1 || missing+=(curl)
+    command -v gpg > /dev/null 2>&1 || missing+=(gnupg)
+    if [ ${#missing[@]} -gt 0 ]; then
+        warn "missing prerequisite(s): ${missing[*]}"
+        info "  sudo apt-get install -y ${missing[*]}"
+        info "  then re-run this script."
         return 1
     fi
 

@@ -28,8 +28,10 @@
         <fieldset>
           <legend>Age</legend>
           <div class="row">
-            <input type="range" id="age" name="age" min="18" max="90" value="34" disabled>
-            <output id="age-out">any</output>
+            <label class="sr-only" for="age">Exact age</label>
+            <input type="range" id="age" name="age" min="18" max="90" value="34"
+                   disabled aria-describedby="age-out">
+            <output id="age-out" for="age">any</output>
           </div>
           <label class="check">
             <input type="checkbox" id="age-enabled"> Pin an exact age

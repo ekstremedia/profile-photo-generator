@@ -15,6 +15,7 @@ from PIL import Image
 from ppg.store import files as files_module
 from ppg.store.files import (
     HASH_BYTES,
+    InvalidDigest,
     avatar_dir,
     compute_hash,
     has_variants,
@@ -94,6 +95,30 @@ def test_paths_fan_out_two_levels(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Size resolution
 # ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad",
+    ["../../../etc", "a/../../b", "..", "", "not-hex", "ABCDEF0123456789", "a" * 200],
+)
+def test_avatar_dir_rejects_anything_that_is_not_a_digest(tmp_path, bad: str) -> None:
+    """Avatar ids become filesystem paths, and one caller feeds that to rmtree.
+
+    `avatar_dir(out, "../../../etc")` used to return "/../../../etc". The
+    database lookup in front of it made that hard to reach, but validating the
+    id where it becomes a path is the check that does not depend on every
+    caller remembering.
+    """
+    with pytest.raises(InvalidDigest):
+        avatar_dir(tmp_path, bad)
+
+
+def test_avatar_dir_accepts_a_real_digest(tmp_path) -> None:
+    digest = compute_hash({"anything": 1})
+    path = avatar_dir(tmp_path, digest)
+    assert path == tmp_path / digest[:2] / digest[2:4] / digest
+    # And the result stays inside the outputs directory, which is the point.
+    assert tmp_path.resolve() in path.resolve().parents
 
 
 def test_pick_size_resolves_exact_nearest_larger_and_out_of_range() -> None:

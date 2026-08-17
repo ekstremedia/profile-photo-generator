@@ -163,6 +163,52 @@ def test_a_blocked_age_is_a_422(client) -> None:
     assert "PPG_ALLOW_MINORS" in response.json()["detail"]
 
 
+def test_attribute_axes_are_filtered_like_free_text(client) -> None:
+    """Every axis accepts free text, so every axis is a way into the prompt.
+
+    `prompt_extra` was filtered from the start and the attribute axes were not,
+    which meant `profession="nude celebrity"` sailed straight through - the
+    same hole, reached by a different field name.
+    """
+    for axis, value in (
+        ("profession", "nude celebrity lookalike"),
+        ("clothing", "topless"),
+        ("expression", "seductive"),
+        ("hair", "schoolgirl"),
+    ):
+        response = client.post("/v1/avatars", json={axis: value})
+        assert response.status_code == 422, f"{axis}={value!r} was accepted"
+        assert axis in response.json()["detail"]
+
+
+def test_free_form_attribute_values_still_work(client) -> None:
+    # The filter must not break the feature it guards: asking for a job the
+    # vocabulary has never heard of is supported on purpose.
+    response = client.post("/v1/avatars", json={"profession": "puffin researcher"})
+    assert response.status_code == 200
+    assert response.json()["attributes"]["profession"] == "puffin researcher"
+
+
+def test_overlong_attribute_values_are_rejected(client) -> None:
+    # An 800-character "profession" is either a mistake or an attempt to
+    # smuggle a prompt through a field that looks like a dropdown.
+    response = client.post("/v1/avatars", json={"profession": "chef " * 200})
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["porn-star", "porn_star", "hard-core porn", "look-alike of a celebrity"],
+)
+def test_separators_do_not_defeat_the_blocklist(text: str, client) -> None:
+    """Hyphens and underscores are separators, not word characters.
+
+    While the tokeniser treated "-" as part of a word, "porn star" was blocked
+    and "porn-star" was not, which is a spelling test rather than a filter.
+    """
+    assert client.post("/v1/avatars", json={"prompt_extra": text}).status_code == 422
+
+
 def test_the_negative_prompt_is_not_content_filtered(client) -> None:
     # "nude" in a negative prompt is an instruction to avoid nudity, so
     # blocking it there would be backwards.

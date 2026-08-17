@@ -11,7 +11,7 @@ from ppg.api.deps import AppState, get_state, require_api_key
 from ppg.pipeline.worker import Job, QueueFull
 from ppg.safety import SafetyError
 from ppg.schemas import AvatarRequest, AvatarResult, BatchRequest, JobInfo
-from ppg.store.files import pick_size, variant_path
+from ppg.store.files import InvalidDigest, pick_size, variant_path
 
 logger = logging.getLogger(__name__)
 
@@ -127,11 +127,15 @@ async def avatar_by_seed(
 ) -> FileResponse:
     """Return the avatar for `key`, generating it on first request.
 
-    The key is hashed to a seed, so the same key always yields the same face -
-    forever, across restarts and machines. That makes this usable directly in
+    The key is hashed to a seed, so the same key always yields the same face
+    for a given model and pipeline version. That makes this usable directly in
     a template:
 
-        <img src="{{ config('ppg.url') }}/v1/avatars/by-seed/{{ md5($user->email) }}?size=256">
+        <img src="{{ config('ppg.url') }}/v1/avatars/by-seed/{{ $user->avatar_key }}?size=256">
+
+    Use an opaque per-user value, not a bare hash of an email address: the key
+    appears in the URL and therefore in logs and browser history, and an
+    unsalted email hash is reversible for any common address.
 
     First call for a given key blocks while the image renders; every later call
     is a static file read.
@@ -268,7 +272,10 @@ def _serve(
     except ValueError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    path = variant_path(state.settings.outputs_dir, avatar_id, resolved, fmt)
+    try:
+        path = variant_path(state.settings.outputs_dir, avatar_id, resolved, fmt)
+    except InvalidDigest as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
     if not path.is_file():
         raise HTTPException(
             status_code=404,

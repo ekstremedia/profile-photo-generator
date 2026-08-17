@@ -152,12 +152,31 @@ curl -o avatar.webp \
 ## The killer feature
 
 `GET /v1/avatars/by-seed/{key}` hashes any string to a seed with blake2b, so
-the same key always produces the same face — across restarts and across
-machines. Use `by-seed/{md5(email)}` and every user has a stable avatar with no
-database column, no upload flow and no placeholder service.
+the same key always produces the same face. Every user gets a stable avatar
+with no database column, no upload flow and no placeholder service.
 
 The first request for a key renders the image and blocks; every later request
 is a static file read served with `Cache-Control: immutable`.
+
+**Do not use a bare `md5(email)` as the key.** It ends up in an image URL, in
+your access logs and in the browser's history, and an unsalted email hash is
+trivially reversible for any common address — it is the address, in effect.
+Use an opaque per-user value instead:
+
+```php
+// A random column on the user, or a keyed hash. Never the raw email.
+$key = $user->avatar_key;                                   // best
+$key = hash_hmac('sha256', $user->email, config('app.key')); // also fine
+```
+
+**What "the same face" is guaranteed against.** The key maps to a seed
+deterministically and permanently. The *image* is reproducible for a fixed
+model, sampler settings and `PIPELINE_VERSION`; changing `PPG_MODEL_ID`,
+`PPG_STEPS`, `PPG_GUIDANCE` or the vocabulary produces a different face for the
+same key, which is what `PIPELINE_VERSION` exists to make explicit. Different
+GPUs and torch builds can also differ in the last few bits. Treat generated
+avatars as durable data: back up `data/`, and do not assume you can regenerate
+a specific face years later from the key alone.
 
 ## Hardware expectations
 
