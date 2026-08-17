@@ -16,7 +16,7 @@
 # ---------------------------------------------------------------------------
 # Stage 1 - build the virtualenv
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS builder
+FROM python:3.14-slim AS builder
 
 # uv resolves and installs this dependency tree in a fraction of the time pip
 # takes, which matters when torch alone is a 900MB download.
@@ -53,7 +53,7 @@ RUN uv pip install --no-cache --no-deps --reinstall .
 # ---------------------------------------------------------------------------
 # Stage 2 - runtime
 # ---------------------------------------------------------------------------
-FROM python:3.12-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # libgomp1: torch links against OpenMP for its CPU kernels, which are used for
 #   image pre/post-processing even when generation runs on the GPU.
